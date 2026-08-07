@@ -199,6 +199,7 @@ export const data: DataProps[] = customerNames.map((name, idx) => {
     lastActivity: lastActivities[idx % lastActivities.length],
     unread,
     isChatbot,
+    profilename: name, // ✅ Added the missing profilename property
     action: null,
   };
 });
