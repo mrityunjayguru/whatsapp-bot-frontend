@@ -1,17 +1,9 @@
-const API_URL =
-  "https://familiar-underwent-riddance.ngrok-free.dev/api/conversation";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function apisericecon() {
   try {
-
-    console.log(" From API");
-    console.log(" From API");
-    console.log(" From API");
-    console.log(" From API");
-    console.log(" From API");
-    
-
-    const response = await fetch(API_URL, {
+    const response = await fetch(API_BASE_URL+"/api/conversation", {
       method: "GET",
       headers: {
         Accept: "application/json",

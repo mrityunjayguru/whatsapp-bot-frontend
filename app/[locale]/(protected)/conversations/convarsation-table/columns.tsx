@@ -22,6 +22,7 @@ export type DataProps = {
   id: string | number;
   conversationNo: string;
   profilename:string;
+  phonenumber:string;
   title: string;
   customerName: string;
   customerImage: string;

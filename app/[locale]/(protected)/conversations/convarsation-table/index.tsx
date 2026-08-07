@@ -148,9 +148,12 @@ const ConversationTable = () => {
                                 item.customerImage ??
                                 "/images/avatar/avatar-1.png",
 
+                                
+                            phonenumber:
+                                item.phonenumber ?? "",
 
                             mobile:
-                                item.mobile ?? "",
+                                item.phonenumber ?? "",
 
 
                             tags:
