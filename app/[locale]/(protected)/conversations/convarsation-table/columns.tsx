@@ -250,7 +250,8 @@ export const columns: ColumnDef<DataProps>[] = [
     header: "Action",
     enableHiding: false,
     cell: ({ row }) => {
-      const convId = row.original.id;
+      const convId = row.original.phonenumber;
+      
       return (
         <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
           <TooltipProvider>

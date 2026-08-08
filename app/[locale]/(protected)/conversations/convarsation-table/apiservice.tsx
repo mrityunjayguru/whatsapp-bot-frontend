@@ -3,7 +3,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function apisericecon() {
   try {
-    const response = await fetch(API_BASE_URL+"/api/conversation", {
+    const response = await fetch(API_BASE_URL+"/api/conversation/byuniquephonenumber", {
       method: "GET",
       headers: {
         Accept: "application/json",
