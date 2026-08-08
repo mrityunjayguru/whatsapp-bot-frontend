@@ -187,6 +187,7 @@ export const data: DataProps[] = customerNames.map((name, idx) => {
     customerName: name,
     customerImage: avatars[idx % avatars.length],
     mobile: mobileNumbers[idx % mobileNumbers.length],
+    phonenumber: mobileNumbers[idx % mobileNumbers.length], // 👈 ADD THIS LINE
     tags: allTags[idx % allTags.length],
     assignedTo: {
       name: agentNames[idx % agentNames.length],
@@ -199,7 +200,7 @@ export const data: DataProps[] = customerNames.map((name, idx) => {
     lastActivity: lastActivities[idx % lastActivities.length],
     unread,
     isChatbot,
-    profilename: name, // ✅ Added the missing profilename property
+    profilename: name,
     action: null,
   };
 });
