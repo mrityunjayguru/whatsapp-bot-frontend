@@ -79,6 +79,7 @@ interface ApiConversation {
 /* =========================================================
    CHAT TYPES
 ========================================================= */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 type ChatMessage = {
   id: string | number;
@@ -615,49 +616,92 @@ export function ConversationDetailClient({
   ===================================================== */
 
   const handleSendChatMessage = () => {
-    if (
-      !chatInput.trim() &&
-      !chatPreviewFile
-    ) {
-      return;
-    }
 
-    const now = new Date();
+        console.log("==apiData==");
+        console.log(apiData[0].phonenumber);
+        console.log("==apiData==");
 
-    const formattedTime =
-      now.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
 
-    if (chatPreviewFile) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          ...chatPreviewFile,
-          id: Date.now(),
-          sender: "employee",
-          time: formattedTime,
+
+            //Niraj
+            if (
+              !chatInput.trim() &&
+              !chatPreviewFile
+            ) {
+              return;
+            }
+           
+            console.log("chatPreviewFile");
+            console.log(chatPreviewFile);
+            console.log("chatPreviewFile");
+
+            const now = new Date();
+
+            const formattedTime =
+              now.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+
+            if (chatPreviewFile) {
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  ...chatPreviewFile,
+                  id: Date.now(),
+                  sender: "employee",
+                  time: formattedTime,
+                },
+              ]);
+
+              setChatPreviewFile(null);
+            } else {
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  id: Date.now(),
+                  sender: "employee",
+                  type: "text",
+                  content: chatInput.trim(),
+                  time: formattedTime,
+                },
+              ]);
+            }
+
+            
+    const url = API_BASE_URL + "/api/whatsapp/send1"
+        + "?to=" + encodeURIComponent(apiData[0].phonenumber)
+        + "&message=" + encodeURIComponent(chatInput.trim());
+
+    fetch(url, {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         },
-      ]);
+        body: JSON.stringify({
+            to: apiData[0].phonenumber,
+            message: chatInput.trim()
+        })
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert(" Data Sent successfully");
+    })
+    .catch(error => {
+        alert("Error: " + error);
+    });
 
-      setChatPreviewFile(null);
-    } else {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          sender: "employee",
-          type: "text",
-          content: chatInput.trim(),
-          time: formattedTime,
-        },
-      ]);
-    }
 
-    setChatInput("");
+
+
+            setChatInput("");
   };
+
+
+
+
 
   /* =====================================================
      EMOJI
@@ -668,6 +712,7 @@ export function ConversationDetailClient({
 
   const [showAttachMenu, setShowAttachMenu] =
     useState(false);
+
 
   const quickEmojis = [
     "😊",
@@ -990,7 +1035,7 @@ export function ConversationDetailClient({
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-default-500">
-            Conversation #
+            Conversation#
             {firstConversation?.id || "-"}
           </div>
 
