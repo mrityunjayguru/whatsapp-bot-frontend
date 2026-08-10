@@ -324,32 +324,17 @@ function normalizeConversation(
     item.status?.toLowerCase() || "pending";
 
   /**
-   * We are creating the shape your existing child components expect.
-   *
-   * The "as DataProps" is intentional because your existing
-   * DataProps probably has fields that aren't present in this API.
+   * FIXED: Removed the duplicate 'status' property.
+   * We only set status once using the normalized value.
    */
   return {
     conversationNo: String(item.id),
-
-    customerName:
-      item.profilename || "Unknown Customer",
-
-    mobile:
-      item.phonenumber || "",
-
+    customerName: item.profilename || "Unknown Customer",
+    mobile: item.phonenumber || "",
     tags: [],
-
-    createdDate:
-      formatDate(item.created_at),
-
-    status:
-      normalizedStatus,
-
+    createdDate: formatDate(item.created_at),
+    status: normalizedStatus,
     assignedTo: null,
-
-    // Keep additional API data available if DataProps allows it.
-    ...item,
   } as unknown as DataProps;
 }
 
