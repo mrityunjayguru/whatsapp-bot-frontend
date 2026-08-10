@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, ChangeEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  type ChangeEvent,
+  type ElementType,
+} from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
-  Image,
+  Image as ImageIcon,
   FileText,
   Video,
   Music,
@@ -79,7 +86,9 @@ interface ApiConversation {
 /* =========================================================
    CHAT TYPES
 ========================================================= */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 type ChatMessage = {
   id: string | number;
@@ -91,6 +100,16 @@ type ChatMessage = {
   thumbnail?: string;
   duration?: string;
   time: string;
+};
+
+type ChatPreviewFile = {
+  type: "file" | "image" | "audio" | "video";
+  content?: string;
+  fileName?: string;
+  fileSize?: string;
+  thumbnail?: string;
+  duration?: string;
+  file?: File;
 };
 
 /* =========================================================
@@ -170,12 +189,12 @@ const availableTags = [
 const tabConfig: {
   key: FileKind | "all";
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }[] = [
   {
     key: "image",
     label: "Images",
-    icon: Image,
+    icon: ImageIcon,
   },
   {
     key: "document",
@@ -209,7 +228,9 @@ const tabConfig: {
 ========================================================= */
 
 function formatTime(dateString: string) {
-  if (!dateString) return "";
+  if (!dateString) {
+    return "";
+  }
 
   const date = new Date(dateString);
 
@@ -225,7 +246,9 @@ function formatTime(dateString: string) {
 }
 
 function formatDate(dateString: string) {
-  if (!dateString) return "";
+  if (!dateString) {
+    return "";
+  }
 
   const date = new Date(dateString);
 
@@ -241,18 +264,37 @@ function formatDate(dateString: string) {
 }
 
 /**
- * chatbaotdata is coming from API as a JSON STRING.
+ * chatbaotdata comes from the API as a JSON string.
  *
  * Example:
  * '{"reply":"Hello","intent":"greeting","should_handoff_to_human":false}'
  */
-function parseChatbotData(value: string | null) {
-  if (!value) return null;
+function parseChatbotData(value: string | null): {
+  reply?: string;
+  intent?: string;
+  should_handoff_to_human?: boolean;
+} | null {
+  if (!value) {
+    return null;
+  }
 
   try {
-    return JSON.parse(value);
+    const parsed = JSON.parse(value);
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null
+    ) {
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
-    console.error("Failed to parse chatbaotdata:", error);
+    console.error(
+      "Failed to parse chatbaotdata:",
+      error
+    );
+
     return null;
   }
 }
@@ -276,9 +318,13 @@ function convertApiMessages(
 
       if (item.mimeType?.startsWith("image/")) {
         type = "image";
-      } else if (item.mimeType?.startsWith("audio/")) {
+      } else if (
+        item.mimeType?.startsWith("audio/")
+      ) {
         type = "audio";
-      } else if (item.mimeType?.startsWith("video/")) {
+      } else if (
+        item.mimeType?.startsWith("video/")
+      ) {
         type = "video";
       } else if (item.mimeType) {
         type = "file";
@@ -289,7 +335,8 @@ function convertApiMessages(
         sender: "customer",
         type,
         content: item.messagebody,
-        fileName: item.filePath || undefined,
+        fileName:
+          item.filePath || undefined,
         time: formatTime(item.created_at),
       });
     }
@@ -298,7 +345,9 @@ function convertApiMessages(
        BOT / EMPLOYEE MESSAGE
     --------------------------------------------- */
 
-    const botData = parseChatbotData(item.chatbaotdata);
+    const botData = parseChatbotData(
+      item.chatbaotdata
+    );
 
     if (botData?.reply) {
       messages.push({
@@ -324,13 +373,10 @@ function normalizeConversation(
   const normalizedStatus =
     item.status?.toLowerCase() || "pending";
 
-  /**
-   * FIXED: Removed the duplicate 'status' property.
-   * We only set status once using the normalized value.
-   */
   return {
     conversationNo: String(item.id),
-    customerName: item.profilename || "Unknown Customer",
+    customerName:
+      item.profilename || "Unknown Customer",
     mobile: item.phonenumber || "",
     tags: [],
     createdDate: formatDate(item.created_at),
@@ -356,31 +402,24 @@ export function ConversationDetailClient({
     ? conversation
     : [];
 
-  /**
-   * If API returns:
-   *
-   * Conversation: [...]
-   *
-   * then apiData contains all records.
-   */
-
   const firstConversation = apiData[0];
 
   /* =====================================================
      NORMALIZED CONVERSATION
   ===================================================== */
 
-  const normalizedConversation = firstConversation
-    ? normalizeConversation(firstConversation)
-    : ({
-        conversationNo: "",
-        customerName: "Unknown Customer",
-        mobile: "",
-        tags: [],
-        createdDate: "",
-        status: "pending",
-        assignedTo: null,
-      } as unknown as DataProps);
+  const normalizedConversation =
+    firstConversation
+      ? normalizeConversation(firstConversation)
+      : ({
+          conversationNo: "",
+          customerName: "Unknown Customer",
+          mobile: "",
+          tags: [],
+          createdDate: "",
+          status: "pending",
+          assignedTo: null,
+        } as unknown as DataProps);
 
   /* =====================================================
      BASIC STATE
@@ -413,30 +452,49 @@ export function ConversationDetailClient({
     "";
 
   const customerSince =
-    firstConversation?.created_at ||
-    "";
+    firstConversation?.created_at || "";
+
+  const createCustomerInfo = () => ({
+    customerName,
+    whatsappName: customerName,
+    phone,
+    email:
+      customerName
+        .toLowerCase()
+        .replace(/\s+/g, ".") +
+      "@example.com",
+    tags: [] as string[],
+    customerSince,
+  });
 
   const [customerInfo, setCustomerInfo] =
-    useState({
-      customerName,
-      whatsappName: customerName,
-      phone,
-      email:
-        customerName
-          .toLowerCase()
-          .replace(/\s+/g, ".") + "@example.com",
-      tags: [] as string[],
-      customerSince,
-    });
+    useState(createCustomerInfo);
 
   const [editForm, setEditForm] =
-    useState({ ...customerInfo });
+    useState(createCustomerInfo);
 
   const [newTagInput, setNewTagInput] =
     useState("");
 
   const [selectedTags, setSelectedTags] =
     useState<string[]>([]);
+
+  /* =====================================================
+     UPDATE CUSTOMER INFO WHEN API CONVERSATION CHANGES
+  ===================================================== */
+
+  useEffect(() => {
+    const nextCustomerInfo =
+      createCustomerInfo();
+
+    setCustomerInfo(nextCustomerInfo);
+    setEditForm(nextCustomerInfo);
+  }, [
+    firstConversation?.id,
+    firstConversation?.profilename,
+    firstConversation?.phonenumber,
+    firstConversation?.created_at,
+  ]);
 
   /* =====================================================
      AGENT
@@ -446,7 +504,7 @@ export function ConversationDetailClient({
 
   const agentInitials = agentName
     .split(" ")
-    .map((n) => n[0])
+    .map((name) => name[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
@@ -457,7 +515,7 @@ export function ConversationDetailClient({
 
   const customerInitials = customerName
     .split(" ")
-    .map((n) => n[0])
+    .map((name) => name[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
@@ -483,17 +541,14 @@ export function ConversationDetailClient({
      CHAT MESSAGES FROM API
   ===================================================== */
 
-  const apiChatMessages = convertApiMessages(apiData);
+  const apiChatMessages =
+    convertApiMessages(apiData);
 
   const [chatMessages, setChatMessages] =
-    useState<ChatMessage[]>(apiChatMessages);
+    useState<ChatMessage[]>(
+      apiChatMessages
+    );
 
-  /**
-   * IMPORTANT:
-   *
-   * If API data arrives/changes after component mount,
-   * update chatMessages.
-   */
   useEffect(() => {
     setChatMessages(
       convertApiMessages(apiData)
@@ -515,9 +570,11 @@ export function ConversationDetailClient({
   ===================================================== */
 
   useEffect(() => {
-    if (!chatContainerRef.current) return;
+    if (!chatContainerRef.current) {
+      return;
+    }
 
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       const container =
         chatContainerRef.current;
 
@@ -529,7 +586,9 @@ export function ConversationDetailClient({
       }
     }, 50);
 
-    return () => clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [chatMessages]);
 
   /* =====================================================
@@ -539,7 +598,7 @@ export function ConversationDetailClient({
   const [
     chatPreviewFile,
     setChatPreviewFile,
-  ] = useState<any>(null);
+  ] = useState<ChatPreviewFile | null>(null);
 
   /* =====================================================
      RECORDING
@@ -556,6 +615,16 @@ export function ConversationDetailClient({
       null
     );
 
+  useEffect(() => {
+    return () => {
+      if (recordingInterval.current) {
+        clearInterval(
+          recordingInterval.current
+        );
+      }
+    };
+  }, []);
+
   const toggleRecording = () => {
     if (isRecording) {
       setIsRecording(false);
@@ -564,6 +633,8 @@ export function ConversationDetailClient({
         clearInterval(
           recordingInterval.current
         );
+
+        recordingInterval.current = null;
       }
 
       const now = new Date();
@@ -575,14 +646,16 @@ export function ConversationDetailClient({
           hour12: true,
         });
 
-      const minutes =
-        Math.floor(recordingTime / 60);
+      const minutes = Math.floor(
+        recordingTime / 60
+      );
 
       const seconds =
         recordingTime % 60;
 
-      const durationStr =
-        `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+      const durationStr = `${minutes}:${
+        seconds < 10 ? "0" : ""
+      }${seconds}`;
 
       setChatMessages((prev) => [
         ...prev,
@@ -612,98 +685,6 @@ export function ConversationDetailClient({
   };
 
   /* =====================================================
-     SEND CHAT
-  ===================================================== */
-
-  const handleSendChatMessage = () => {
-
-        console.log("==apiData==");
-        console.log(apiData[0].phonenumber);
-        console.log("==apiData==");
-
-
-
-            //Niraj
-            if (
-              !chatInput.trim() &&
-              !chatPreviewFile
-            ) {
-              return;
-            }
-           
-            console.log("chatPreviewFile");
-            console.log(chatPreviewFile);
-            console.log("chatPreviewFile");
-
-            const now = new Date();
-
-            const formattedTime =
-              now.toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              });
-
-            if (chatPreviewFile) {
-              setChatMessages((prev) => [
-                ...prev,
-                {
-                  ...chatPreviewFile,
-                  id: Date.now(),
-                  sender: "employee",
-                  time: formattedTime,
-                },
-              ]);
-
-              setChatPreviewFile(null);
-            } else {
-              setChatMessages((prev) => [
-                ...prev,
-                {
-                  id: Date.now(),
-                  sender: "employee",
-                  type: "text",
-                  content: chatInput.trim(),
-                  time: formattedTime,
-                },
-              ]);
-            }
-
-            
-    const url = API_BASE_URL + "/api/whatsapp/send1"
-        + "?to=" + encodeURIComponent(apiData[0].phonenumber)
-        + "&message=" + encodeURIComponent(chatInput.trim());
-
-    fetch(url, {
-        method: "POST",
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            to: apiData[0].phonenumber,
-            message: chatInput.trim()
-        })
-    })
-    .then(response => response.text())
-    .then(data => {
-        alert(" Data Sent successfully");
-    })
-    .catch(error => {
-        alert("Error: " + error);
-    });
-
-
-
-
-            setChatInput("");
-  };
-
-
-
-
-
-  /* =====================================================
      EMOJI
   ===================================================== */
 
@@ -712,7 +693,6 @@ export function ConversationDetailClient({
 
   const [showAttachMenu, setShowAttachMenu] =
     useState(false);
-
 
   const quickEmojis = [
     "😊",
@@ -729,9 +709,7 @@ export function ConversationDetailClient({
     "🤔",
   ];
 
-  const insertEmoji = (
-    emoji: string
-  ) => {
+  const insertEmoji = (emoji: string) => {
     setChatInput(
       (prev) => prev + emoji
     );
@@ -770,8 +748,7 @@ export function ConversationDetailClient({
       fileInputRef.current.accept =
         "audio/*";
     } else {
-      fileInputRef.current.accept =
-        "*/*";
+      fileInputRef.current.accept = "*/*";
     }
 
     fileInputRef.current.click();
@@ -780,24 +757,18 @@ export function ConversationDetailClient({
   const handleFileSelected = (
     e: ChangeEvent<HTMLInputElement>
   ) => {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file || !attachmentType) {
       return;
     }
 
-    const formatSize = (
-      bytes: number
-    ) => {
+    const formatSize = (bytes: number) => {
       if (bytes < 1024) {
         return `${bytes} B`;
       }
 
-      if (
-        bytes <
-        1024 * 1024
-      ) {
+      if (bytes < 1024 * 1024) {
         return `${(
           bytes / 1024
         ).toFixed(1)} KB`;
@@ -812,44 +783,252 @@ export function ConversationDetailClient({
     const objectUrl =
       URL.createObjectURL(file);
 
-    let previewData: any = {};
+    let previewData: ChatPreviewFile;
 
     if (attachmentType === "Image") {
       previewData = {
         type: "image",
         content: file.name,
         thumbnail: objectUrl,
+        file,
       };
-    } else if (
-      attachmentType === "Audio"
-    ) {
+    } else if (attachmentType === "Audio") {
       previewData = {
         type: "audio",
         fileName: file.name,
         fileSize: formatSize(file.size),
         duration: "0:00",
+        file,
       };
-    } else if (
-      attachmentType === "Video"
-    ) {
+    } else if (attachmentType === "Video") {
       previewData = {
         type: "video",
         fileName: file.name,
         fileSize: formatSize(file.size),
+        file,
       };
     } else {
       previewData = {
         type: "file",
         fileName: file.name,
         fileSize: formatSize(file.size),
+        file,
       };
     }
 
-    setChatPreviewFile(
-      previewData
-    );
-
+    setChatPreviewFile(previewData);
     setShowAttachMenu(false);
+  };
+
+  /* =====================================================
+     SEND CHAT MESSAGE / FILE
+  ===================================================== */
+
+  const handleSendChatMessage = async () => {
+    const customerPhone =
+      apiData?.[0]?.phonenumber;
+
+    if (!customerPhone) {
+      alert("Phone number not found");
+      return;
+    }
+
+    const files = fileInputRef.current?.files
+      ? Array.from(
+          fileInputRef.current.files
+        )
+      : [];
+
+    if (
+      files.length === 0 &&
+      chatPreviewFile?.file instanceof File
+    ) {
+      files.push(chatPreviewFile.file);
+    }
+
+    if (
+      !chatInput.trim() &&
+      files.length === 0
+    ) {
+      alert(
+        "Please enter a message or select a file"
+      );
+      return;
+    }
+
+    if (!API_BASE_URL) {
+      alert(
+        "API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL."
+      );
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+
+      formData.append(
+        "to",
+        customerPhone
+      );
+
+      formData.append(
+        "message",
+        chatInput.trim()
+      );
+
+      files.forEach((file) => {
+        formData.append(
+          "files",
+          file,
+          file.name
+        );
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/whatsapp/sendmultipart`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+          },
+          body: formData,
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      console.log(
+        "API RESPONSE:",
+        responseText
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          responseText ||
+            `HTTP ${response.status}`
+        );
+      }
+
+      const now = new Date();
+
+      const formattedTime =
+        now.toLocaleTimeString(
+          "en-US",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }
+        );
+
+      const messageText =
+        chatInput.trim();
+
+      /* ---------------------------------------------
+         ADD TEXT MESSAGE TO UI
+      --------------------------------------------- */
+
+      if (messageText) {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            sender: "employee",
+            type: "text",
+            content: messageText,
+            time: formattedTime,
+          },
+        ]);
+      }
+
+      /* ---------------------------------------------
+         ADD FILES TO UI
+      --------------------------------------------- */
+
+      if (files.length > 0) {
+        const uploadedMessages: ChatMessage[] =
+          files.map((file, index) => {
+            let type:
+              | "image"
+              | "video"
+              | "audio"
+              | "file" = "file";
+
+            if (
+              file.type.startsWith(
+                "image/"
+              )
+            ) {
+              type = "image";
+            } else if (
+              file.type.startsWith(
+                "video/"
+              )
+            ) {
+              type = "video";
+            } else if (
+              file.type.startsWith(
+                "audio/"
+              )
+            ) {
+              type = "audio";
+            }
+
+            return {
+              id:
+                Date.now() +
+                index +
+                1,
+              sender: "employee",
+              type,
+              content: file.name,
+              fileName: file.name,
+              fileSize:
+                file.size < 1024
+                  ? `${file.size} B`
+                  : `${(
+                      file.size /
+                      1024
+                    ).toFixed(1)} KB`,
+              time: formattedTime,
+            };
+          });
+
+        setChatMessages(
+          (prev) => [
+            ...prev,
+            ...uploadedMessages,
+          ]
+        );
+      }
+
+      /* ---------------------------------------------
+         CLEAR INPUT
+      --------------------------------------------- */
+
+      setChatInput("");
+      setChatPreviewFile(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      setAttachmentType(null);
+
+      alert("Data sent successfully");
+    } catch (error) {
+      console.error(
+        "Upload error:",
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Error sending file/message"
+      );
+    }
   };
 
   /* =====================================================
@@ -857,14 +1036,22 @@ export function ConversationDetailClient({
   ===================================================== */
 
   const [internalNotes, setInternalNotes] =
-    useState([
+    useState<
+      {
+        id: number;
+        author: string;
+        content: string;
+        time: string;
+      }[]
+    >([
       {
         id: 1,
         author: "System",
         content:
           "WhatsApp profile verified automatically.",
         time: formatDate(
-          firstConversation?.created_at || ""
+          firstConversation?.created_at ||
+            ""
         ),
       },
     ]);
@@ -906,7 +1093,8 @@ export function ConversationDetailClient({
         {
           id: Date.now(),
           author:
-            agentName !== "Unassigned"
+            agentName !==
+            "Unassigned"
               ? agentName
               : "Rahul",
           content: trimmed,
@@ -948,20 +1136,17 @@ export function ConversationDetailClient({
     ]);
 
     setNewTagInput("");
-
     setAddTagOpen(true);
   };
 
-  const toggleTag = (
-    tag: string
-  ) => {
-    setSelectedTags(
-      (prev) =>
-        prev.includes(tag)
-          ? prev.filter(
-              (t) => t !== tag
-            )
-          : [...prev, tag]
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag)
+        ? prev.filter(
+            (currentTag) =>
+              currentTag !== tag
+          )
+        : [...prev, tag]
     );
   };
 
@@ -984,13 +1169,12 @@ export function ConversationDetailClient({
     }
   };
 
-  const removeTag = (
-    tag: string
-  ) => {
+  const removeTag = (tag: string) => {
     setSelectedTags(
       (prev) =>
         prev.filter(
-          (t) => t !== tag
+          (currentTag) =>
+            currentTag !== tag
         )
     );
   };
@@ -1022,6 +1206,29 @@ export function ConversationDetailClient({
     setPreviewOpen(true);
   };
 
+  const handleDownloadFile = (
+    file: SharedFile | null
+  ) => {
+    if (!file?.url) {
+      alert(
+        "Download URL is not available."
+      );
+      return;
+    }
+
+    const link =
+      document.createElement("a");
+
+    link.href = file.url;
+    link.download = file.name;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   /* =====================================================
      RENDER
   ===================================================== */
@@ -1051,23 +1258,18 @@ export function ConversationDetailClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* LEFT */}
+
         <div className="flex flex-col gap-4">
           <Section1Header
             conversation={
               normalizedConversation
             }
-            statusStyle={
-              statusStyle
-            }
-            statusLabel={
-              statusLabel
-            }
+            statusStyle={statusStyle}
+            statusLabel={statusLabel}
             agentInitials={
               agentInitials
             }
-            agentName={
-              agentName
-            }
+            agentName={agentName}
           />
 
           <Section2CustomerInfo
@@ -1080,20 +1282,17 @@ export function ConversationDetailClient({
             customerInitials={
               customerInitials
             }
-            tagColors={
-              tagColors
-            }
+            tagColors={tagColors}
             openEditContact={
               openEditContact
             }
-            openAddTag={
-              openAddTag
-            }
+            openAddTag={openAddTag}
             className="flex-1"
           />
         </div>
 
         {/* RIGHT */}
+
         <Section3ChatTimeline
           chatMessages={
             chatMessages
@@ -1107,12 +1306,8 @@ export function ConversationDetailClient({
           setShowEmojiPicker={
             setShowEmojiPicker
           }
-          quickEmojis={
-            quickEmojis
-          }
-          insertEmoji={
-            insertEmoji
-          }
+          quickEmojis={quickEmojis}
+          insertEmoji={insertEmoji}
           showAttachMenu={
             showAttachMenu
           }
@@ -1143,9 +1338,7 @@ export function ConversationDetailClient({
           toggleRecording={
             toggleRecording
           }
-          chatInput={
-            chatInput
-          }
+          chatInput={chatInput}
           setChatInput={
             setChatInput
           }
@@ -1167,15 +1360,9 @@ export function ConversationDetailClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Section4FilesShared
-          tabConfig={
-            tabConfig
-          }
-          sharedFiles={
-            sharedFiles
-          }
-          openPreview={
-            openPreview
-          }
+          tabConfig={tabConfig}
+          sharedFiles={sharedFiles}
+          openPreview={openPreview}
         />
 
         <Section6History />
@@ -1196,12 +1383,8 @@ export function ConversationDetailClient({
           internalNotes={
             internalNotes
           }
-          newNote={
-            newNote
-          }
-          setNewNote={
-            setNewNote
-          }
+          newNote={newNote}
+          setNewNote={setNewNote}
           handlePostNote={
             handlePostNote
           }
@@ -1229,13 +1412,15 @@ export function ConversationDetailClient({
 
           {previewFile && (
             <div className="space-y-3">
+              {/* FILE INFO */}
+
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 shrink-0 rounded-md border border-default-200 bg-default-50 flex items-center justify-center text-default-500">
                   {(() => {
                     const meta =
                       tabConfig.find(
-                        (t) =>
-                          t.key ===
+                        (tab) =>
+                          tab.key ===
                           previewFile.kind
                       );
 
@@ -1271,6 +1456,8 @@ export function ConversationDetailClient({
                   </div>
                 </div>
               </div>
+
+              {/* PREVIEW */}
 
               <div className="border border-default-200 rounded-lg overflow-hidden bg-default-50 min-h-[320px] flex items-center justify-center">
                 {previewFile.kind ===
@@ -1317,7 +1504,8 @@ export function ConversationDetailClient({
                         onClick={() =>
                           window.open(
                             previewFile.url,
-                            "_blank"
+                            "_blank",
+                            "noopener,noreferrer"
                           )
                         }
                       >
@@ -1337,15 +1525,22 @@ export function ConversationDetailClient({
                       Download the file to view its contents
                     </div>
 
-                    <div className="pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Download className="w-4 h-4 me-1.5" />
-                        Download
-                      </Button>
-                    </div>
+                    {previewFile.url && (
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadFile(
+                              previewFile
+                            )
+                          }
+                        >
+                          <Download className="w-4 h-4 me-1.5" />
+                          Download
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1367,6 +1562,14 @@ export function ConversationDetailClient({
             <Button
               color="primary"
               size="sm"
+              onClick={() =>
+                handleDownloadFile(
+                  previewFile
+                )
+              }
+              disabled={
+                !previewFile?.url
+              }
             >
               <Download className="w-4 h-4 me-1.5" />
               Download File
@@ -1375,16 +1578,12 @@ export function ConversationDetailClient({
         </DialogContent>
       </Dialog>
 
-
-
       {/* =================================================
-          EDIT CONTACT niraj
+          EDIT CONTACT
       ================================================= */}
 
       <Dialog
-        open={
-          editContactOpen
-        }
+        open={editContactOpen}
         onOpenChange={
           setEditContactOpen
         }
@@ -1397,6 +1596,8 @@ export function ConversationDetailClient({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* CUSTOMER NAME */}
+
             <div className="space-y-2">
               <Label htmlFor="customerName">
                 Customer Name
@@ -1418,6 +1619,8 @@ export function ConversationDetailClient({
                 }
               />
             </div>
+
+            {/* WHATSAPP NAME */}
 
             <div className="space-y-2">
               <Label htmlFor="whatsappName">
@@ -1441,6 +1644,8 @@ export function ConversationDetailClient({
               />
             </div>
 
+            {/* PHONE */}
+
             <div className="space-y-2">
               <Label htmlFor="phone">
                 Phone Number
@@ -1462,6 +1667,8 @@ export function ConversationDetailClient({
                 }
               />
             </div>
+
+            {/* EMAIL */}
 
             <div className="space-y-2">
               <Label htmlFor="email">
@@ -1485,6 +1692,8 @@ export function ConversationDetailClient({
                 }
               />
             </div>
+
+            {/* CUSTOMER SINCE */}
 
             <div className="space-y-2">
               <Label htmlFor="customerSince">
@@ -1552,6 +1761,8 @@ export function ConversationDetailClient({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* SELECTED TAGS */}
+
             <div className="space-y-2">
               <Label>
                 Selected Tags
@@ -1582,6 +1793,7 @@ export function ConversationDetailClient({
                             )
                           }
                           className="ml-1 hover:opacity-70"
+                          aria-label={`Remove ${tag}`}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1595,6 +1807,8 @@ export function ConversationDetailClient({
                 )}
               </div>
             </div>
+
+            {/* AVAILABLE TAGS */}
 
             <div className="space-y-2">
               <Label>
@@ -1620,7 +1834,6 @@ export function ConversationDetailClient({
                         }
                         className={cn(
                           "rounded-full px-2.5 py-1 text-xs font-medium border transition-colors",
-
                           isSelected
                             ? cn(
                                 "border-transparent",
@@ -1642,6 +1855,8 @@ export function ConversationDetailClient({
                 )}
               </div>
             </div>
+
+            {/* CUSTOM TAG */}
 
             <div className="space-y-2">
               <Label htmlFor="customTag">
