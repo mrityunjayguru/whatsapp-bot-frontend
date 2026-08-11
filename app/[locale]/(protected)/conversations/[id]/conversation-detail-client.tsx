@@ -84,11 +84,20 @@ interface ApiConversation {
 }
 
 /* =========================================================
-   CHAT TYPES
+   API CONFIG
 ========================================================= */
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+const TEXT_API_ENDPOINT = "/api/whatsapp/send1";
+
+const MULTIPART_API_ENDPOINT =
+  "/api/whatsapp/sendmultipart";
+
+/* =========================================================
+   CHAT TYPES
+========================================================= */
 
 type ChatMessage = {
   id: string | number;
@@ -228,9 +237,7 @@ const tabConfig: {
 ========================================================= */
 
 function formatTime(dateString: string) {
-  if (!dateString) {
-    return "";
-  }
+  if (!dateString) return "";
 
   const date = new Date(dateString);
 
@@ -246,9 +253,7 @@ function formatTime(dateString: string) {
 }
 
 function formatDate(dateString: string) {
-  if (!dateString) {
-    return "";
-  }
+  if (!dateString) return "";
 
   const date = new Date(dateString);
 
@@ -263,20 +268,26 @@ function formatDate(dateString: string) {
   });
 }
 
-/**
- * chatbaotdata comes from the API as a JSON string.
- *
- * Example:
- * '{"reply":"Hello","intent":"greeting","should_handoff_to_human":false}'
- */
-function parseChatbotData(value: string | null): {
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function parseChatbotData(
+  value: string | null
+): {
   reply?: string;
   intent?: string;
   should_handoff_to_human?: boolean;
 } | null {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
 
   try {
     const parsed = JSON.parse(value);
@@ -309,9 +320,7 @@ function convertApiMessages(
   const messages: ChatMessage[] = [];
 
   apiData.forEach((item) => {
-    /* ---------------------------------------------
-       CUSTOMER MESSAGE
-    --------------------------------------------- */
+    /* CUSTOMER MESSAGE */
 
     if (item.messagebody?.trim()) {
       let type: ChatMessage["type"] = "text";
@@ -335,15 +344,12 @@ function convertApiMessages(
         sender: "customer",
         type,
         content: item.messagebody,
-        fileName:
-          item.filePath || undefined,
+        fileName: item.filePath || undefined,
         time: formatTime(item.created_at),
       });
     }
 
-    /* ---------------------------------------------
-       BOT / EMPLOYEE MESSAGE
-    --------------------------------------------- */
+    /* BOT / EMPLOYEE MESSAGE */
 
     const botData = parseChatbotData(
       item.chatbaotdata
@@ -364,7 +370,7 @@ function convertApiMessages(
 }
 
 /* =========================================================
-   NORMALIZE FIRST API RECORD
+   NORMALIZE CONVERSATION
 ========================================================= */
 
 function normalizeConversation(
@@ -437,6 +443,9 @@ export function ConversationDetailClient({
   const [previewFile, setPreviewFile] =
     useState<SharedFile | null>(null);
 
+  const [isSending, setIsSending] =
+    useState(false);
+
   /* =====================================================
      CUSTOMER INFO
   ===================================================== */
@@ -478,10 +487,6 @@ export function ConversationDetailClient({
 
   const [selectedTags, setSelectedTags] =
     useState<string[]>([]);
-
-  /* =====================================================
-     UPDATE CUSTOMER INFO WHEN API CONVERSATION CHANGES
-  ===================================================== */
 
   useEffect(() => {
     const nextCustomerInfo =
@@ -538,7 +543,7 @@ export function ConversationDetailClient({
     "Pending";
 
   /* =====================================================
-     CHAT MESSAGES FROM API
+     CHAT MESSAGES
   ===================================================== */
 
   const apiChatMessages =
@@ -748,7 +753,11 @@ export function ConversationDetailClient({
       fileInputRef.current.accept =
         "audio/*";
     } else {
-      fileInputRef.current.accept = "*/*";
+      /*
+       * Document
+       */
+      fileInputRef.current.accept =
+        ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,*/*";
     }
 
     fileInputRef.current.click();
@@ -762,23 +771,6 @@ export function ConversationDetailClient({
     if (!file || !attachmentType) {
       return;
     }
-
-    const formatSize = (bytes: number) => {
-      if (bytes < 1024) {
-        return `${bytes} B`;
-      }
-
-      if (bytes < 1024 * 1024) {
-        return `${(
-          bytes / 1024
-        ).toFixed(1)} KB`;
-      }
-
-      return `${(
-        bytes /
-        (1024 * 1024)
-      ).toFixed(1)} MB`;
-    };
 
     const objectUrl =
       URL.createObjectURL(file);
@@ -796,7 +788,9 @@ export function ConversationDetailClient({
       previewData = {
         type: "audio",
         fileName: file.name,
-        fileSize: formatSize(file.size),
+        fileSize: formatFileSize(
+          file.size
+        ),
         duration: "0:00",
         file,
       };
@@ -804,14 +798,18 @@ export function ConversationDetailClient({
       previewData = {
         type: "video",
         fileName: file.name,
-        fileSize: formatSize(file.size),
+        fileSize: formatFileSize(
+          file.size
+        ),
         file,
       };
     } else {
       previewData = {
         type: "file",
         fileName: file.name,
-        fileSize: formatSize(file.size),
+        fileSize: formatFileSize(
+          file.size
+        ),
         file,
       };
     }
@@ -821,33 +819,234 @@ export function ConversationDetailClient({
   };
 
   /* =====================================================
-     SEND CHAT MESSAGE / FILE
+     GET SELECTED FILES
   ===================================================== */
 
-  const handleSendChatMessage = async () => {
-    const customerPhone =
-      apiData?.[0]?.phonenumber;
+  const getSelectedFiles = (): File[] => {
+    /*
+     * First try the input.
+     */
+    if (fileInputRef.current?.files?.length) {
+      return Array.from(
+        fileInputRef.current.files
+      );
+    }
 
-    if (!customerPhone) {
-      alert("Phone number not found");
+    /*
+     * If input has been cleared but preview
+     * still contains the selected File, use it.
+     */
+    if (
+      chatPreviewFile?.file instanceof File
+    ) {
+      return [chatPreviewFile.file];
+    }
+
+    return [];
+  };
+
+  /* =====================================================
+     SEND TEXT ONLY
+     
+     Backend:
+
+     @PostMapping("/send1")
+     public String send(
+         @RequestParam("to") String to,
+         @RequestParam("message") String message
+     )
+  ========================================================= */
+
+  const sendTextMessage = async (
+    customerPhone: string,
+    message: string
+  ) => {
+    /*
+     * IMPORTANT:
+     *
+     * Your Spring API uses @RequestParam.
+     * Therefore do NOT send JSON.
+     *
+     * Send:
+     *
+     * to=919999999999
+     * message=Hello
+     */
+
+    const formData =
+      new URLSearchParams();
+
+    formData.append(
+      "to",
+      customerPhone
+    );
+
+    formData.append(
+      "message",
+      message
+    );
+
+    const response = await fetch(
+      `${API_BASE_URL}${TEXT_API_ENDPOINT}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded",
+          Accept:
+            "application/json, text/plain, */*",
+        },
+        body: formData.toString(),
+      }
+    );
+
+    const responseText =
+      await response.text();
+
+    console.log(
+      "SEND1 RESPONSE:",
+      responseText
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        responseText ||
+          `HTTP ${response.status}`
+      );
+    }
+
+    return responseText;
+  };
+
+  /* =====================================================
+     SEND MULTIPART
+
+     Used for:
+
+     1. Text + document
+     2. Document only
+     3. Text + image
+     4. Text + video
+     5. Text + audio
+  ========================================================= */
+
+  const sendMultipartMessage = async (
+    customerPhone: string,
+    message: string,
+    files: File[]
+  ) => {
+    const formData = new FormData();
+
+    formData.append(
+      "to",
+      customerPhone
+    );
+
+    /*
+     * For document-only messages this
+     * will be an empty string.
+     */
+    formData.append(
+      "message",
+      message
+    );
+
+    files.forEach((file) => {
+      /*
+       * IMPORTANT:
+       *
+       * "files" must match your backend
+       * @RequestParam("files")
+       *
+       * Example:
+       *
+       * @RequestParam("files")
+       * MultipartFile[] files
+       */
+      formData.append(
+        "files",
+        file,
+        file.name
+      );
+    });
+
+    /*
+     * DO NOT set Content-Type manually.
+     *
+     * Browser automatically creates:
+     *
+     * multipart/form-data;
+     * boundary=....
+     */
+    const response = await fetch(
+      `${API_BASE_URL}${MULTIPART_API_ENDPOINT}`,
+      {
+        method: "POST",
+        headers: {
+          Accept:
+            "application/json, text/plain, */*",
+        },
+        body: formData,
+      }
+    );
+
+    const responseText =
+      await response.text();
+
+    console.log(
+      "SEND MULTIPART RESPONSE:",
+      responseText
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        responseText ||
+          `HTTP ${response.status}`
+      );
+    }
+
+    return responseText;
+  };
+
+  /* =====================================================
+     SEND CHAT MESSAGE / FILE
+
+     TEXT ONLY:
+       -> /send1
+
+     TEXT + FILE:
+       -> /sendmultipart
+
+     FILE ONLY:
+       -> /sendmultipart
+  ========================================================= */
+
+  const handleSendChatMessage = async () => {
+    if (isSending) {
       return;
     }
 
-    const files = fileInputRef.current?.files
-      ? Array.from(
-          fileInputRef.current.files
-        )
-      : [];
+    const customerPhone =
+      apiData?.[0]?.phonenumber?.trim();
 
-    if (
-      files.length === 0 &&
-      chatPreviewFile?.file instanceof File
-    ) {
-      files.push(chatPreviewFile.file);
+    if (!customerPhone) {
+      alert(
+        "Phone number not found"
+      );
+      return;
     }
 
+    const messageText =
+      chatInput.trim();
+
+    const files =
+      getSelectedFiles();
+
+    /*
+     * Nothing to send.
+     */
     if (
-      !chatInput.trim() &&
+      !messageText &&
       files.length === 0
     ) {
       alert(
@@ -856,6 +1055,9 @@ export function ConversationDetailClient({
       return;
     }
 
+    /*
+     * Check API configuration.
+     */
     if (!API_BASE_URL) {
       alert(
         "API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL."
@@ -864,51 +1066,68 @@ export function ConversationDetailClient({
     }
 
     try {
-      const formData = new FormData();
+      setIsSending(true);
 
-      formData.append(
-        "to",
-        customerPhone
-      );
+      /* =================================================
+         CASE 1
+         TEXT ONLY
 
-      formData.append(
-        "message",
-        chatInput.trim()
-      );
+         Example:
+         Hello
 
-      files.forEach((file) => {
-        formData.append(
-          "files",
-          file,
-          file.name
+         Request:
+         POST /send1
+
+         to=919999999999
+         message=Hello
+      ================================================= */
+
+      if (
+        messageText &&
+        files.length === 0
+      ) {
+        console.log(
+          "Sending TEXT ONLY message"
         );
-      });
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/whatsapp/sendmultipart`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-          },
-          body: formData,
-        }
-      );
-
-      const responseText =
-        await response.text();
-
-      console.log(
-        "API RESPONSE:",
-        responseText
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          responseText ||
-            `HTTP ${response.status}`
+        await sendTextMessage(
+          customerPhone,
+          messageText
         );
       }
+
+      /* =================================================
+         CASE 2 + 3
+
+         TEXT + FILE
+         OR
+         FILE ONLY
+
+         Both use multipart.
+      ================================================= */
+
+      else if (files.length > 0) {
+        console.log(
+          "Sending MULTIPART message",
+          {
+            to: customerPhone,
+            message: messageText,
+            files: files.map(
+              (file) => file.name
+            ),
+          }
+        );
+
+        await sendMultipartMessage(
+          customerPhone,
+          messageText,
+          files
+        );
+      }
+
+      /* =================================================
+         UPDATE UI ONLY AFTER SUCCESS
+      ================================================= */
 
       const now = new Date();
 
@@ -922,18 +1141,19 @@ export function ConversationDetailClient({
           }
         );
 
-      const messageText =
-        chatInput.trim();
-
-      /* ---------------------------------------------
-         ADD TEXT MESSAGE TO UI
-      --------------------------------------------- */
+      /* =================================================
+         ADD TEXT TO CHAT
+         
+         For:
+         Text only
+         Text + document
+      ================================================= */
 
       if (messageText) {
         setChatMessages((prev) => [
           ...prev,
           {
-            id: Date.now(),
+            id: `employee-text-${Date.now()}`,
             sender: "employee",
             type: "text",
             content: messageText,
@@ -942,9 +1162,13 @@ export function ConversationDetailClient({
         ]);
       }
 
-      /* ---------------------------------------------
-         ADD FILES TO UI
-      --------------------------------------------- */
+      /* =================================================
+         ADD FILES TO CHAT
+
+         For:
+         Document only
+         Text + document
+      ================================================= */
 
       if (files.length > 0) {
         const uploadedMessages: ChatMessage[] =
@@ -976,21 +1200,15 @@ export function ConversationDetailClient({
             }
 
             return {
-              id:
-                Date.now() +
-                index +
-                1,
+              id: `employee-file-${Date.now()}-${index}`,
               sender: "employee",
               type,
               content: file.name,
               fileName: file.name,
               fileSize:
-                file.size < 1024
-                  ? `${file.size} B`
-                  : `${(
-                      file.size /
-                      1024
-                    ).toFixed(1)} KB`,
+                formatFileSize(
+                  file.size
+                ),
               time: formattedTime,
             };
           });
@@ -1003,31 +1221,36 @@ export function ConversationDetailClient({
         );
       }
 
-      /* ---------------------------------------------
-         CLEAR INPUT
-      --------------------------------------------- */
+      /* =================================================
+         CLEAR AFTER SUCCESS
+      ================================================= */
 
       setChatInput("");
+
       setChatPreviewFile(null);
+
+      setAttachmentType(null);
+
+      setShowEmojiPicker(false);
+
+      setShowAttachMenu(false);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-
-      setAttachmentType(null);
-
-      alert("Data sent successfully");
     } catch (error) {
       console.error(
-        "Upload error:",
+        "Send message error:",
         error
       );
 
       alert(
         error instanceof Error
           ? error.message
-          : "Error sending file/message"
+          : "Error sending message"
       );
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -1222,7 +1445,8 @@ export function ConversationDetailClient({
     link.href = file.url;
     link.download = file.name;
     link.target = "_blank";
-    link.rel = "noopener noreferrer";
+    link.rel =
+      "noopener noreferrer";
 
     document.body.appendChild(link);
     link.click();
@@ -1235,9 +1459,7 @@ export function ConversationDetailClient({
 
   return (
     <div className="space-y-4">
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* HEADER */}
 
       <div className="flex items-center justify-between">
         <div>
@@ -1252,9 +1474,7 @@ export function ConversationDetailClient({
         </div>
       </div>
 
-      {/* =================================================
-          MAIN GRID
-      ================================================= */}
+      {/* MAIN GRID */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* LEFT */}
@@ -1348,15 +1568,11 @@ export function ConversationDetailClient({
         />
       </div>
 
-      {/* =================================================
-          STATISTICS
-      ================================================= */}
+      {/* STATISTICS */}
 
       <Section5Statistics />
 
-      {/* =================================================
-          FILES + HISTORY
-      ================================================= */}
+      {/* FILES + HISTORY */}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Section4FilesShared
@@ -1368,9 +1584,7 @@ export function ConversationDetailClient({
         <Section6History />
       </div>
 
-      {/* =================================================
-          ACTIVITY + NOTES + CUSTOMER HISTORY
-      ================================================= */}
+      {/* ACTIVITY + NOTES + CUSTOMER HISTORY */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Section7InternalActivity
@@ -1412,8 +1626,6 @@ export function ConversationDetailClient({
 
           {previewFile && (
             <div className="space-y-3">
-              {/* FILE INFO */}
-
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 shrink-0 rounded-md border border-default-200 bg-default-50 flex items-center justify-center text-default-500">
                   {(() => {
@@ -1456,8 +1668,6 @@ export function ConversationDetailClient({
                   </div>
                 </div>
               </div>
-
-              {/* PREVIEW */}
 
               <div className="border border-default-200 rounded-lg overflow-hidden bg-default-50 min-h-[320px] flex items-center justify-center">
                 {previewFile.kind ===
@@ -1548,9 +1758,7 @@ export function ConversationDetailClient({
           )}
 
           <DialogFooter>
-            <DialogClose
-              asChild
-            >
+            <DialogClose asChild>
               <Button
                 variant="outline"
                 size="sm"
@@ -1596,8 +1804,6 @@ export function ConversationDetailClient({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* CUSTOMER NAME */}
-
             <div className="space-y-2">
               <Label htmlFor="customerName">
                 Customer Name
@@ -1619,8 +1825,6 @@ export function ConversationDetailClient({
                 }
               />
             </div>
-
-            {/* WHATSAPP NAME */}
 
             <div className="space-y-2">
               <Label htmlFor="whatsappName">
@@ -1644,8 +1848,6 @@ export function ConversationDetailClient({
               />
             </div>
 
-            {/* PHONE */}
-
             <div className="space-y-2">
               <Label htmlFor="phone">
                 Phone Number
@@ -1667,8 +1869,6 @@ export function ConversationDetailClient({
                 }
               />
             </div>
-
-            {/* EMAIL */}
 
             <div className="space-y-2">
               <Label htmlFor="email">
@@ -1692,8 +1892,6 @@ export function ConversationDetailClient({
                 }
               />
             </div>
-
-            {/* CUSTOMER SINCE */}
 
             <div className="space-y-2">
               <Label htmlFor="customerSince">
@@ -1719,9 +1917,7 @@ export function ConversationDetailClient({
           </div>
 
           <DialogFooter>
-            <DialogClose
-              asChild
-            >
+            <DialogClose asChild>
               <Button
                 variant="outline"
                 size="sm"
@@ -1761,8 +1957,6 @@ export function ConversationDetailClient({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* SELECTED TAGS */}
-
             <div className="space-y-2">
               <Label>
                 Selected Tags
@@ -1807,8 +2001,6 @@ export function ConversationDetailClient({
                 )}
               </div>
             </div>
-
-            {/* AVAILABLE TAGS */}
 
             <div className="space-y-2">
               <Label>
@@ -1856,8 +2048,6 @@ export function ConversationDetailClient({
               </div>
             </div>
 
-            {/* CUSTOM TAG */}
-
             <div className="space-y-2">
               <Label htmlFor="customTag">
                 Add Custom Tag
@@ -1901,9 +2091,7 @@ export function ConversationDetailClient({
           </div>
 
           <DialogFooter>
-            <DialogClose
-              asChild
-            >
+            <DialogClose asChild>
               <Button
                 variant="outline"
                 size="sm"
