@@ -1363,6 +1363,7 @@ export function ConversationDetailClient({
   };
 
   const toggleTag = (tag: string) => {
+    
     setSelectedTags((prev) =>
       prev.includes(tag)
         ? prev.filter(
@@ -1374,6 +1375,10 @@ export function ConversationDetailClient({
   };
 
   const addCustomTag = () => {
+
+
+    alert(" Adding Tag");
+
     const tag =
       newTagInput.trim();
 
@@ -1402,7 +1407,11 @@ export function ConversationDetailClient({
     );
   };
 
+  /*
+
   const saveTags = () => {
+
+    
     setCustomerInfo(
       (prev) => ({
         ...prev,
@@ -1414,6 +1423,53 @@ export function ConversationDetailClient({
 
     setAddTagOpen(false);
   };
+
+  */
+
+
+const saveTags = async () => {
+  try {
+    // Save all selected tags to the API
+    await Promise.all(
+      selectedTags.map(async (tag) => {
+        const tagName = typeof tag === "string" ? tag : tag.name;
+
+        const url =
+          API_BASE_URL + "/api/tags?name=" +
+          encodeURIComponent(tagName);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: tagName,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to save tag: ${tagName}`);
+        }
+
+        return response.text();
+      })
+    );
+
+    // Update customer info with all selected tags
+    setCustomerInfo((prev) => ({
+      ...prev,
+      tags: [...selectedTags],
+    }));
+
+    setAddTagOpen(false);
+  } catch (error) {
+    console.error("Error saving tags:", error);
+  }
+};
+
+
 
   /* =====================================================
      FILES
