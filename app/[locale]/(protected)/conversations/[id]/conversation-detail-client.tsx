@@ -8,6 +8,8 @@ import {
   type ElementType,
 } from "react";
 
+import { Client } from "@stomp/stompjs";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +97,8 @@ const TEXT_API_ENDPOINT = "/api/whatsapp/send1";
 const MULTIPART_API_ENDPOINT =
   "/api/whatsapp/sendmultipart";
 
+  const WS_API_BASE_URL = process.env.NEXT_PUBLIC_WS_API_BASE_URL ?? "";
+
 /* =========================================================
    CHAT TYPES
 ========================================================= */
@@ -143,6 +147,8 @@ interface SharedFile {
   url?: string;
   thumbnail?: string;
 }
+
+
 
 /* =========================================================
    STATUS
@@ -573,6 +579,205 @@ export function ConversationDetailClient({
   /* =====================================================
      AUTO SCROLL
   ===================================================== */
+
+const stompClient = useRef<Client | null>(null);
+
+const [wsConnected, setWsConnected] = useState(false);
+
+/* =====================================================
+   WEBSOCKET / STOMP
+===================================================== */
+
+const handleWebSocketMessage = (
+  data: any
+) => {
+  console.log(
+    "Received WebSocket data:",
+    data
+  );
+
+  /*
+   * Example expected message:
+   *
+   * {
+   *   "id": 123,
+   *   "messagebody": "Hello",
+   *   "phonenumber": "919999999999",
+   *   "profilename": "John",
+   *   "created_at": "2026-08-12T10:30:00"
+   * }
+   */
+
+  /*
+   * Only update this conversation.
+   */
+  if (
+    data.phonenumber &&
+    data.phonenumber !== phone
+  ) {
+    return;
+  }
+
+  /*
+   * Convert WebSocket message into
+   * your existing ChatMessage format.
+   */
+  const newMessage: ChatMessage = {
+    id:
+      data.id ||
+      `ws-${Date.now()}`,
+
+    sender:
+      data.sender === "employee"
+        ? "employee"
+        : "customer",
+
+    type: "text",
+
+    content:
+      data.messagebody ||
+      data.message ||
+      data.content ||
+      "",
+
+    time: formatTime(
+      data.created_at ||
+        data.createdAt ||
+        new Date().toISOString()
+    ),
+  };
+
+  /*
+   * Add message to existing chat.
+   */
+  setChatMessages((prev) => {
+
+    /*
+     * Avoid duplicate message
+     */
+    const exists = prev.some(
+      (message) =>
+        String(message.id) ===
+        String(newMessage.id)
+    );
+
+    if (exists) {
+      return prev;
+    }
+
+    return [
+      ...prev,
+      newMessage,
+    ];
+  });
+};
+
+
+useEffect(() => {
+  const client = new Client({
+    brokerURL: WS_API_BASE_URL+"/ws",
+
+    reconnectDelay: 5000,
+
+    debug: (message) => {
+      console.log("STOMP:", message);
+    },
+
+    onConnect: () => {
+      console.log("STOMP connected");
+
+      setWsConnected(true);
+
+      /*
+       * Subscribe to Spring Boot topic
+       */
+      client.subscribe(
+        "/topic/tags",
+        (message) => {
+          console.log(
+            "WebSocket message:",
+            message.body
+          );
+
+          try {
+            const data = JSON.parse(
+              message.body
+            );
+
+            console.log(
+              "WebSocket parsed data:",
+              data
+            );
+
+            /*
+             * Handle incoming message
+             */
+            handleWebSocketMessage(data);
+
+          } catch (error) {
+            console.error(
+              "Invalid WebSocket message:",
+              error
+            );
+          }
+        }
+      );
+    },
+
+    onDisconnect: () => {
+      console.log(
+        "STOMP disconnected"
+      );
+
+      setWsConnected(false);
+    },
+
+    onStompError: (frame) => {
+      console.error(
+        "STOMP error:",
+        frame.headers["message"]
+      );
+
+      console.error(
+        "STOMP error body:",
+        frame.body
+      );
+
+      setWsConnected(false);
+    },
+
+    onWebSocketError: (error) => {
+      console.error(
+        "WebSocket error:",
+        error
+      );
+
+      setWsConnected(false);
+    },
+  });
+
+  stompClient.current = client;
+
+  client.activate();
+
+  /*
+   * Cleanup when component unmounts
+   */
+  return () => {
+    console.log(
+      "Disconnecting STOMP..."
+    );
+
+    client.deactivate();
+
+    stompClient.current = null;
+
+    setWsConnected(false);
+  };
+}, []);
+
+
+
 
   useEffect(() => {
     if (!chatContainerRef.current) {
