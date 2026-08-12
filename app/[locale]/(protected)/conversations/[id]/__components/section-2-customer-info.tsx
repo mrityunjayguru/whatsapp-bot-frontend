@@ -97,6 +97,7 @@ interface Section2CustomerInfoProps {
   tagColors?: Record<string, string>;
   openEditContact?: () => void;
   openAddTag?: () => void;
+  className?: string; // 👈 Added className prop to support parent layout styling
 }
 
 /* ============================================================
@@ -110,6 +111,7 @@ export const Section2CustomerInfo = ({
   tagColors,
   openEditContact,
   openAddTag,
+  className, // 👈 Destructured className here
 }: Section2CustomerInfoProps) => {
   /* ==========================================================
      STATE
@@ -891,7 +893,7 @@ export const Section2CustomerInfo = ({
   ========================================================== */
 
   return (
-    <Card>
+    <Card className={cn("", className)}> {/* 👈 Applied className to Card */}
       <CardContent className="p-4 space-y-3">
 
         {/* HEADER */}
