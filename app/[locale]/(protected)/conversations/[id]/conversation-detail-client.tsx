@@ -1404,15 +1404,14 @@ export function ConversationDetailClient({
     );
   };
 
-
-
 const saveTags = async () => {
   try {
     // Save all selected tags to the API
     await Promise.all(
-      selectedTags.map(async (tag) => {
-      const tagName = typeof tag === "string" ? tag : tag?.name;
-      alert(tagName);
+      selectedTags.map(async (tagName) => {
+        // tagName is already a string from selectedTags state
+        alert(tagName);
+        
         const url =
           API_BASE_URL + "/api/tags?name=" +
           encodeURIComponent(tagName);
@@ -1447,7 +1446,6 @@ const saveTags = async () => {
     console.error("Error saving tags:", error);
   }
 };
-
 
 
   /* =====================================================
