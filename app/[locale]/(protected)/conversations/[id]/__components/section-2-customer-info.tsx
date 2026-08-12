@@ -327,44 +327,32 @@ export const Section2CustomerInfo = ({
       if (Array.isArray(payload)) {
         return payload
           .map(normalizeTag)
-          .filter(
-            (tag): tag is ApiTag =>
-              tag !== null
-          );
+          .filter((tag: ApiTag | null): tag is ApiTag => tag !== null);
       }
 
       /* { tags: [] } */
       if (Array.isArray(payload.tags)) {
         return payload.tags
           .map(normalizeTag)
-          .filter(
-            (tag): tag is ApiTag =>
-              tag !== null
-          );
+          .filter((tag: ApiTag | null): tag is ApiTag => tag !== null);
       }
 
       /* { data: [] } */
       if (Array.isArray(payload.data)) {
         return payload.data
           .map(normalizeTag)
-          .filter(
-            (tag): tag is ApiTag =>
-              tag !== null
-          );
+          .filter((tag: ApiTag | null): tag is ApiTag => tag !== null);
       }
 
       /* { data: { tags: [] } } */
       if (
         payload.data &&
         typeof payload.data === "object" &&
-        Array.isArray(payload.data.tags)
+        Array.isArray((payload.data as any).tags)
       ) {
-        return payload.data.tags
+        return (payload.data as any).tags
           .map(normalizeTag)
-          .filter(
-            (tag): tag is ApiTag =>
-              tag !== null
-          );
+          .filter((tag: ApiTag | null): tag is ApiTag => tag !== null);
       }
 
       /* { tag: {} } */
