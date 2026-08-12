@@ -1376,9 +1376,6 @@ export function ConversationDetailClient({
 
   const addCustomTag = () => {
 
-
-    alert(" Adding Tag");
-
     const tag =
       newTagInput.trim();
 
@@ -1414,8 +1411,8 @@ const saveTags = async () => {
     // Save all selected tags to the API
     await Promise.all(
       selectedTags.map(async (tag) => {
-        const tagName = typeof tag === "string" ? tag : tag.name;
-
+      const tagName = typeof tag === "string" ? tag : tag?.name;
+      alert(tagName);
         const url =
           API_BASE_URL + "/api/tags?name=" +
           encodeURIComponent(tagName);
