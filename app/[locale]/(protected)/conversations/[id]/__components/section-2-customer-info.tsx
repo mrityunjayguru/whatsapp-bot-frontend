@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { User, Tag, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type ApiTag = {
   id: number;
@@ -29,6 +30,10 @@ export const Section2CustomerInfo = ({
 }: any) => {
   const [allTags, setAllTags] = useState<ApiTag[]>([]);
   const [loadingTags, setLoadingTags] = useState(false);
+
+  const [contacts, setContacts] = useState([]);
+const [contactDialogOpen, setContactDialogOpen] = useState(false);
+const [contactLoading, setContactLoading] = useState(false);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -214,14 +219,210 @@ export const Section2CustomerInfo = ({
               Add Tag
             </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs !border !border-default-200 bg-background hover:bg-transparent hover:text-inherit hover:ring-0 hover:border-default-200"
-            >
-              <Eye className="w-3.5 h-3.5 me-1.5" />
-              View Contact
-            </Button>
+          
+
+
+              
+<Button
+  variant="outline"
+  size="sm"
+  className="h-8 text-xs !border !border-default-200 bg-background hover:bg-transparent hover:text-inherit hover:ring-0 hover:border-default-200"
+  onClick={() => {
+    setContactLoading(true);
+
+    fetch("https://whatsapi.trpgps.com/allcontactentity", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "ngrok-skip-browser-warning": "1",
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch contacts");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Contacts:", data);
+
+        // Store ALL contacts
+        setContacts(data);
+
+        // Open dialog
+        setContactDialogOpen(true);
+      })
+      .catch((error) => {
+        console.error(error);
+        alert("Unable to load contacts.");
+      })
+      .finally(() => {
+        setContactLoading(false);
+      });
+  }}
+>
+  <Eye className="w-3.5 h-3.5 me-1.5" />
+  View Contact
+</Button>
+
+
+
+
+                  
+<Dialog
+  open={contactDialogOpen}
+  onOpenChange={setContactDialogOpen}
+>
+  <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+    
+    <DialogHeader>
+      <DialogTitle>
+        All Contacts
+      </DialogTitle>
+    </DialogHeader>
+
+    {contactLoading ? (
+      <div className="flex justify-center py-10">
+        Loading contacts...
+      </div>
+    ) : (
+      <div className="max-h-[70vh] overflow-auto">
+
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 bg-background">
+            <tr className="border-b">
+
+              <th className="p-2 text-left">
+                ID
+              </th>
+
+              <th className="p-2 text-left">
+                Tenant ID
+              </th>
+
+              <th className="p-2 text-left">
+                WhatsApp Phone ID
+              </th>
+
+              <th className="p-2 text-left">
+                Phone Number
+              </th>
+
+              <th className="p-2 text-left">
+                Profile Name
+              </th>
+
+              <th className="p-2 text-left">
+                Custom Name
+              </th>
+
+              <th className="p-2 text-left">
+                Email
+              </th>
+
+              <th className="p-2 text-left">
+                Created At
+              </th>
+
+              <th className="p-2 text-left">
+                Updated At
+              </th>
+
+              <th className="p-2 text-left">
+                Payload
+              </th>
+
+            </tr>
+          </thead>
+
+          <tbody>
+            {contacts.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="p-6 text-center"
+                >
+                  No contacts found.
+                </td>
+              </tr>
+            ) : (
+              contacts.map((contact) => (
+                <tr
+                  key={contact.id}
+                  className="border-b hover:bg-muted/50"
+                >
+
+                  <td className="p-2">
+                    {contact.id || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.tenantid || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.whatsappphonenumberid || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.phonenumber || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.whatsappprofilename || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.customname || "-"}
+                  </td>
+
+                  <td className="p-2">
+                    {contact.email || "-"}
+                  </td>
+
+                  <td className="p-2 whitespace-nowrap">
+                    {contact.createdat || "-"}
+                  </td>
+
+                  <td className="p-2 whitespace-nowrap">
+                    {contact.updatedat || "-"}
+                  </td>
+
+                  <td className="p-2 max-w-[300px]">
+                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-all text-xs">
+                      {typeof contact.payload === "object"
+                        ? JSON.stringify(
+                            contact.payload,
+                            null,
+                            2
+                          )
+                        : contact.payload || "-"}
+                    </pre>
+                  </td>
+
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+      </div>
+    )}
+
+  </DialogContent>
+</Dialog>
+
+
+
+
+
+
+
+
+
+
+
           </div>
         </div>
       </CardContent>
