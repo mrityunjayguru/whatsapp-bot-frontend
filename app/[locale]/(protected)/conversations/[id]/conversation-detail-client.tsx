@@ -1407,24 +1407,6 @@ export function ConversationDetailClient({
     );
   };
 
-  /*
-
-  const saveTags = () => {
-
-    
-    setCustomerInfo(
-      (prev) => ({
-        ...prev,
-        tags: [
-          ...selectedTags,
-        ],
-      })
-    );
-
-    setAddTagOpen(false);
-  };
-
-  */
 
 
 const saveTags = async () => {
