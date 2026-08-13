@@ -67,7 +67,7 @@ export type ChatMessage = {
 
   fileName?: string;
 
-  fileSize?: string | number;
+  fileSize?: string;
 
   thumbnail?: string;
 
@@ -97,7 +97,7 @@ export type ChatPreviewFile = {
 
   fileName?: string;
 
-  fileSize?: string | number;
+  fileSize?: string;
 
   content?: string;
 
@@ -141,13 +141,9 @@ type Section3ChatTimelineProps = {
     type: string
   ) => void;
 
-  chatPreviewFile?: ChatPreviewFile | null;
+  chatPreviewFile?: any;
 
-  setChatPreviewFile?: React.Dispatch<
-    React.SetStateAction<
-      ChatPreviewFile | null
-    >
-  >;
+  setChatPreviewFile?: any;
 
   isRecording?: boolean;
 
@@ -578,8 +574,7 @@ function normalizeChatMessage(
       message.attachment?.fileName,
 
     fileSize:
-      message.fileSize ??
-      message.attachment?.fileSize,
+      message.fileSize != null ? String(message.fileSize) : message.attachment?.fileSize != null ? String(message.attachment.fileSize) : undefined,
 
     url:
       message.url ??
@@ -1099,16 +1094,7 @@ export const Section3ChatTimeline =
     const setChatPreviewFile =
       useCallback(
         (
-          value:
-            | ChatPreviewFile
-            | null
-            | ((
-                previous:
-                  | ChatPreviewFile
-                  | null
-              ) =>
-                | ChatPreviewFile
-                | null)
+          value: any
         ) => {
           if (
             externalSetChatPreviewFile
