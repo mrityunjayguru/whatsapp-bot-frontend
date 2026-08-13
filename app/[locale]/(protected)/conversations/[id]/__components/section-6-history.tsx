@@ -16,32 +16,56 @@ export const Section6History = () => {
 
         <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-default-200">
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-default-400 ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-default-400 ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Conversation Started</div>
             <div className="text-xs text-default-400">Aug 4, 2026 09:30 AM</div>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Assigned to Rahul</div>
             <div className="text-xs text-default-400">Aug 4, 2026 09:31 AM</div>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-blue-500 ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-blue-500 ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Tag Added</div>
             <div className="text-xs text-default-400">Aug 4, 2026 09:32 AM</div>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-amber-500 ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-amber-500 ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Employee Changed</div>
             <div className="text-xs text-default-400">Aug 4, 2026 09:45 AM</div>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Resolved</div>
             <div className="text-xs text-default-400">Aug 4, 2026 10:15 AM</div>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute -left-[18px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-rose-500 ring-4 ring-background" />
+=======
+            <span className="absolute -left-[20px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-rose-500 ring-4 ring-background" />
+>>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <div className="text-sm font-medium text-default-800">Reopened</div>
             <div className="text-xs text-default-400">Aug 4, 2026 10:30 AM</div>
           </div>
