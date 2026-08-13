@@ -130,9 +130,7 @@ type ChatPreviewFile = {
 type Section3ChatTimelineProps = {
   chatMessages?: ChatMessage[];
 
-  chatContainerRef?: React.RefObject<
-    HTMLDivElement | null
-  >;
+  chatContainerRef?: React.RefObject<HTMLDivElement | null>;
 
   showEmojiPicker?: boolean;
 
@@ -1009,9 +1007,9 @@ export const Section3ChatTimeline =
         null
       );
 
-    const chatContainerRef =
-      externalChatContainerRef ??
-      internalChatContainerRef;
+    // FIX: Properly merge refs - use the external ref if provided, otherwise use internal
+    const chatContainerRef = 
+      externalChatContainerRef ?? internalChatContainerRef;
 
     const internalFileInputRef =
       useRef<HTMLInputElement | null>(
@@ -2490,9 +2488,7 @@ export const Section3ChatTimeline =
 
             {/* CHAT BODY */}
             <div
-              ref={
-                chatContainerRef
-              }
+              ref={chatContainerRef as React.LegacyRef<HTMLDivElement>}
               className="p-4 space-y-2 overflow-y-auto max-h-[480px] min-h-[480px] flex flex-col no-scrollbar scroll-smooth"
             >
 
