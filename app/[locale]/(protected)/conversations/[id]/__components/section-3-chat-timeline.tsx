@@ -1477,7 +1477,7 @@ export const Section3ChatTimeline =
           ];
         }
 
-        return DEFAULT_SOCKET_TOPICS;
+        return [DEFAULT_SOCKET_TOPICS];
       }, [socketTopic]);
 
     /* ========================================================
@@ -1599,87 +1599,94 @@ export const Section3ChatTimeline =
                 [];
 
               /*
-               * Subscribe.
+               * Subscribe - FIXED: Added type guard to ensure socketTopics is an array
                */
-              socketTopics.forEach(
-                (topic) => {
-                  if (!topic) {
-                    return;
-                  }
+              if (Array.isArray(socketTopics)) {
+                socketTopics.forEach(
+                  (topic) => {
+                    if (!topic) {
+                      return;
+                    }
 
-                  console.log(
-                    "📡 SUBSCRIBING TO:",
-                    topic
-                  );
+                    console.log(
+                      "📡 SUBSCRIBING TO:",
+                      topic
+                    );
 
-                  try {
-                    const subscription =
-                      client.subscribe(
-                        topic,
-                        (
-                          message: IMessage
-                        ) => {
-                          console.log(
-                            "================================="
-                          );
-
-                          console.log(
-                            "📨 MESSAGE FROM TOPIC:",
-                            topic
-                          );
-
-                          console.log(
-                            "STOMP MESSAGE:",
-                            message
-                          );
-
-                          console.log(
-                            "STOMP BODY:",
-                            message.body
-                          );
-
-                          console.log(
-                            "================================="
-                          );
-
-                          try {
-                            const data =
-                              parseSocketBody(
-                                message
-                              );
+                    try {
+                      const subscription =
+                        client.subscribe(
+                          topic,
+                          (
+                            message: IMessage
+                          ) => {
+                            console.log(
+                              "================================="
+                            );
 
                             console.log(
-                              "PARSED SOCKET DATA:",
-                              data
+                              "📨 MESSAGE FROM TOPIC:",
+                              topic
                             );
 
-                            handleWebSocketMessage(
-                              data
+                            console.log(
+                              "STOMP MESSAGE:",
+                              message
                             );
-                          } catch (
-                            error
-                          ) {
-                            console.error(
-                              "❌ SOCKET MESSAGE HANDLING ERROR:",
+
+                            console.log(
+                              "STOMP BODY:",
+                              message.body
+                            );
+
+                            console.log(
+                              "================================="
+                            );
+
+                            try {
+                              const data =
+                                parseSocketBody(
+                                  message
+                                );
+
+                              console.log(
+                                "PARSED SOCKET DATA:",
+                                data
+                              );
+
+                              handleWebSocketMessage(
+                                data
+                              );
+                            } catch (
                               error
-                            );
+                            ) {
+                              console.error(
+                                "❌ SOCKET MESSAGE HANDLING ERROR:",
+                                error
+                              );
+                            }
                           }
-                        }
-                      );
+                        );
 
-                    subscriptionsRef.current.push(
-                      subscription
-                    );
-                  } catch (
-                    error
-                  ) {
-                    console.error(
-                      `❌ FAILED TO SUBSCRIBE TO ${topic}:`,
+                      subscriptionsRef.current.push(
+                        subscription
+                      );
+                    } catch (
                       error
-                    );
+                    ) {
+                      console.error(
+                        `❌ FAILED TO SUBSCRIBE TO ${topic}:`,
+                        error
+                      );
+                    }
                   }
-                }
-              );
+                );
+              } else {
+                console.warn(
+                  "socketTopics is not an array:",
+                  socketTopics
+                );
+              }
             },
 
             onDisconnect:
