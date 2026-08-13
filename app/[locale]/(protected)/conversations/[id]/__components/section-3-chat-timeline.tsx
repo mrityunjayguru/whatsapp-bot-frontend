@@ -33,21 +33,6 @@ const WS_API_BASE_URL =
 
 const WS_ENDPOINT = "/ws";
 
-/*
- * IMPORTANT:
- *
- * These must match the destinations used by your backend.
- *
- * If your backend uses something like:
- *
- * /topic/chat/123
- *
- * pass:
- *
- * socketTopic={`/topic/chat/${conversationId}`}
- *
- * from the parent.
- */
 const DEFAULT_SOCKET_TOPICS = "/topic/tags";
 
 const DEFAULT_CHAT_SEND_DESTINATION =
@@ -57,7 +42,7 @@ const DEFAULT_CHAT_SEND_DESTINATION =
    TYPES
 ============================================================ */
 
-type ChatMessage = {
+export type ChatMessage = {
   id: string | number;
 
   sender:
@@ -82,7 +67,7 @@ type ChatMessage = {
 
   fileName?: string;
 
-  fileSize?: string;
+  fileSize?: string | number;
 
   thumbnail?: string;
 
@@ -98,16 +83,12 @@ type ChatMessage = {
 
   status?: string;
 
-  /*
-   * Used to reconcile optimistic messages with
-   * backend WebSocket responses.
-   */
   clientMessageId?: string;
 
   [key: string]: any;
 };
 
-type ChatPreviewFile = {
+export type ChatPreviewFile = {
   type:
     | "image"
     | "file"
@@ -116,7 +97,7 @@ type ChatPreviewFile = {
 
   fileName?: string;
 
-  fileSize?: string;
+  fileSize?: string | number;
 
   content?: string;
 
@@ -128,7 +109,7 @@ type ChatPreviewFile = {
 };
 
 type Section3ChatTimelineProps = {
-  chatMessages?: ChatMessage[];
+  chatMessages?: any[];
 
   chatContainerRef?: React.RefObject<HTMLDivElement | null>;
 
@@ -338,38 +319,6 @@ function normalizeMessageType(
    EXTRACT CHAT OBJECT
 ============================================================ */
 
-/*
- * This is intentionally recursive.
- *
- * It supports:
- *
- * {
- *   id: 1,
- *   content: "hello"
- * }
- *
- * {
- *   message: {...}
- * }
- *
- * {
- *   data: {...}
- * }
- *
- * {
- *   result: {...}
- * }
- *
- * {
- *   payload: {...}
- * }
- *
- * {
- *   event: {...}
- * }
- *
- * and combinations of the above.
- */
 function extractChatObject(
   payload: any
 ): any | null {
@@ -377,9 +326,6 @@ function extractChatObject(
     return null;
   }
 
-  /*
-   * Plain string.
-   */
   if (
     typeof payload ===
     "string"
@@ -393,9 +339,6 @@ function extractChatObject(
     };
   }
 
-  /*
-   * Array.
-   */
   if (
     Array.isArray(payload)
   ) {
@@ -420,9 +363,6 @@ function extractChatObject(
     return null;
   }
 
-  /*
-   * Direct chat object.
-   */
   if (
     payload.messageId !==
       undefined ||
@@ -446,9 +386,6 @@ function extractChatObject(
     return payload;
   }
 
-  /*
-   * message
-   */
   if (
     payload.message !==
     undefined
@@ -485,9 +422,6 @@ function extractChatObject(
     }
   }
 
-  /*
-   * data
-   */
   if (
     payload.data !==
     undefined
@@ -502,9 +436,6 @@ function extractChatObject(
     }
   }
 
-  /*
-   * result
-   */
   if (
     payload.result !==
     undefined
@@ -519,9 +450,6 @@ function extractChatObject(
     }
   }
 
-  /*
-   * payload
-   */
   if (
     payload.payload !==
     undefined
@@ -536,9 +464,6 @@ function extractChatObject(
     }
   }
 
-  /*
-   * event
-   */
   if (
     payload.event !==
     undefined &&
@@ -572,21 +497,12 @@ function normalizeChatMessage(
     return null;
   }
 
-  /*
-   * Backend ID.
-   */
   const backendId =
     message.id ??
     message.messageId ??
     message.uuid ??
     message._id;
 
-  /*
-   * Preserve clientMessageId.
-   *
-   * Backend may return it at root or
-   * inside the actual message.
-   */
   const clientMessageId =
     message.clientMessageId ??
     payload?.clientMessageId ??
@@ -595,10 +511,6 @@ function normalizeChatMessage(
     payload?.data?.message
       ?.clientMessageId;
 
-  /*
-   * If backend doesn't provide an ID,
-   * use clientMessageId or generate one.
-   */
   const finalId =
     backendId ??
     clientMessageId ??
@@ -619,20 +531,12 @@ function normalizeChatMessage(
   const type =
     normalizeMessageType(message);
 
-  /*
-   * Content.
-   */
   let content =
     message.content ??
     message.text ??
     message.body ??
     "";
 
-  /*
-   * Backend may return:
-   *
-   * message: "hello"
-   */
   if (
     !content &&
     typeof message.message ===
@@ -642,9 +546,6 @@ function normalizeChatMessage(
       message.message;
   }
 
-  /*
-   * Timestamp.
-   */
   const timestamp =
     message.timestamp ??
     message.createdAt ??
@@ -756,12 +657,6 @@ function getMessageKey(
     return `client:${message.clientMessageId}`;
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * Never return "" for messages without
-   * IDs because then all of them collide.
-   */
   return [
     normalizeSender(
       message.sender
@@ -783,9 +678,6 @@ function isSameMessage(
   a: ChatMessage,
   b: ChatMessage
 ): boolean {
-  /*
-   * Backend ID match.
-   */
   const aId =
     a.id ??
     a.messageId ??
@@ -808,9 +700,6 @@ function isSameMessage(
     return true;
   }
 
-  /*
-   * Optimistic -> backend reconciliation.
-   */
   if (
     a.clientMessageId &&
     b.clientMessageId &&
@@ -850,10 +739,6 @@ function mergeChatMessages(
     if (
       existingIndex !== -1
     ) {
-      /*
-       * Backend response overwrites optimistic
-       * version while preserving useful local fields.
-       */
       result[
         existingIndex
       ] = {
@@ -862,10 +747,6 @@ function mergeChatMessages(
         ],
         ...newMessage,
 
-        /*
-         * If backend didn't return clientMessageId,
-         * preserve the local one.
-         */
         clientMessageId:
           newMessage.clientMessageId ??
           result[
@@ -996,9 +877,6 @@ export const Section3ChatTimeline =
 
     onSocketMessage,
   }: Section3ChatTimelineProps) => {
-    /* ========================================================
-       REFS
-    ======================================================== */
 
     const internalChatContainerRef =
       useRef<HTMLDivElement | null>(
@@ -1029,15 +907,8 @@ export const Section3ChatTimeline =
     const isUnmountedRef =
       useRef(false);
 
-    /*
-     * Used to avoid unnecessary parent syncing.
-     */
     const previousExternalMessagesRef =
       useRef<ChatMessage[]>([]);
-
-    /* ========================================================
-       LOCAL STATE
-    ======================================================== */
 
     const [
       socketConnected,
@@ -1051,13 +922,19 @@ export const Section3ChatTimeline =
       null
     );
 
+    const normalizedExternalMessages = useMemo(() => {
+      return (externalChatMessages || [])
+        .map((msg) => normalizeChatMessage(msg))
+        .filter((msg): msg is ChatMessage => msg !== null);
+    }, [externalChatMessages]);
+
     const [
       internalChatMessages,
       setInternalChatMessages,
     ] = useState<
       ChatMessage[]
     >(
-      externalChatMessages
+      normalizedExternalMessages
     );
 
     const [
@@ -1093,42 +970,26 @@ export const Section3ChatTimeline =
       setInternalRecordingTime,
     ] = useState(0);
 
-    /* ========================================================
-       SYNC PARENT MESSAGES
-    ======================================================== */
-
     useEffect(() => {
       if (
-        !externalChatMessages
+        !normalizedExternalMessages
       ) {
         return;
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Always MERGE parent/API messages
-       * with local WebSocket messages.
-       *
-       * Never replace local state with parent state.
-       */
       setInternalChatMessages(
         (current) =>
           mergeChatMessages(
             current,
-            externalChatMessages
+            normalizedExternalMessages
           )
       );
 
       previousExternalMessagesRef.current =
-        externalChatMessages;
+        normalizedExternalMessages;
     }, [
-      externalChatMessages,
+      normalizedExternalMessages,
     ]);
-
-    /* ========================================================
-       DISPLAY STATE
-    ======================================================== */
 
     const chatMessages =
       internalChatMessages;
@@ -1156,10 +1017,6 @@ export const Section3ChatTimeline =
     const recordingTime =
       externalRecordingTime ||
       internalRecordingTime;
-
-    /* ========================================================
-       SETTERS
-    ======================================================== */
 
     const setShowEmojiPicker =
       useCallback(
@@ -1270,10 +1127,6 @@ export const Section3ChatTimeline =
         ]
       );
 
-    /* ========================================================
-       ADD LOCAL MESSAGE
-    ======================================================== */
-
     const addLocalChatMessage =
       useCallback(
         (
@@ -1304,80 +1157,30 @@ export const Section3ChatTimeline =
         []
       );
 
-    /* ========================================================
-       HANDLE SOCKET MESSAGE
-    ======================================================== */
-
     const handleWebSocketMessage =
       useCallback(
         (rawData: any) => {
-          console.log(
-            "================================="
-          );
-
-          console.log(
-            "📩 WEBSOCKET MESSAGE RECEIVED"
-          );
-
-          alert("Done");
-          
-         
-          window.location.reload();
-          
-          console.log(
-            "RAW SOCKET DATA Niraj:",
-            rawData
-          );
-
-          console.log(
-            "================================="
-          );
-
           if (!rawData) {
             return;
           }
 
-          /*
-           * Parent callback.
-           */
           onSocketMessage?.(
             rawData
           );
 
-          /*
-           * DO NOT use isChatPayload()
-           * here.
-           *
-           * Just try to normalize.
-           */
           const incomingMessage =
             normalizeChatMessage(
               rawData
             );
 
-          console.log(
-            "NORMALIZED SOCKET MESSAGE:",
-            incomingMessage
-          );
-
           if (
             !incomingMessage
           ) {
-            console.log(
-              "Socket event is not a chat message."
-            );
-
             return;
           }
 
           setInternalChatMessages(
             (previousMessages) => {
-              /*
-               * Find an existing message by:
-               *
-               * 1. backend ID
-               * 2. clientMessageId
-               */
               const existingIndex =
                 previousMessages.findIndex(
                   (message) =>
@@ -1387,18 +1190,10 @@ export const Section3ChatTimeline =
                     )
                 );
 
-              /*
-               * Backend response to optimistic message.
-               */
               if (
                 existingIndex !==
                 -1
               ) {
-                console.log(
-                  "🔄 UPDATING EXISTING CHAT MESSAGE:",
-                  incomingMessage
-                );
-
                 return previousMessages.map(
                   (
                     message,
@@ -1416,9 +1211,6 @@ export const Section3ChatTimeline =
 
                       ...incomingMessage,
 
-                      /*
-                       * Preserve client ID.
-                       */
                       clientMessageId:
                         incomingMessage.clientMessageId ??
                         message.clientMessageId,
@@ -1431,14 +1223,6 @@ export const Section3ChatTimeline =
                 );
               }
 
-              /*
-               * Completely new incoming message.
-               */
-              console.log(
-                "➕ ADDING NEW CHAT MESSAGE:",
-                incomingMessage
-              );
-
               return [
                 ...previousMessages,
                 incomingMessage,
@@ -1448,10 +1232,6 @@ export const Section3ChatTimeline =
         },
         [onSocketMessage]
       );
-
-    /* ========================================================
-       SOCKET TOPICS
-    ======================================================== */
 
     const socketTopics =
       useMemo(() => {
@@ -1476,10 +1256,6 @@ export const Section3ChatTimeline =
         return [DEFAULT_SOCKET_TOPICS];
       }, [socketTopic]);
 
-    /* ========================================================
-       CONNECT WEBSOCKET
-    ======================================================== */
-
     const connectWebSocket =
       useCallback(() => {
         if (
@@ -1495,10 +1271,6 @@ export const Section3ChatTimeline =
           existingClient?.active ||
           existingClient?.connected
         ) {
-          console.log(
-            "WebSocket already active"
-          );
-
           return;
         }
 
@@ -1506,33 +1278,6 @@ export const Section3ChatTimeline =
 
         const brokerURL =
           `${WS_API_BASE_URL}${WS_ENDPOINT}`;
-
-        console.log(
-          "================================="
-        );
-
-        console.log(
-          "CONNECTING WEBSOCKET"
-        );
-
-        console.log(
-          "URL:",
-          brokerURL
-        );
-
-        console.log(
-          "TOPICS:",
-          socketTopics
-        );
-
-        console.log(
-          "SEND DESTINATION:",
-          chatSendDestination
-        );
-
-        console.log(
-          "================================="
-        );
 
         const client =
           new Client({
@@ -1558,18 +1303,6 @@ export const Section3ChatTimeline =
             },
 
             onConnect: () => {
-              console.log(
-                "================================="
-              );
-
-              console.log(
-                "✅ WEBSOCKET CONNECTED"
-              );
-
-              console.log(
-                "================================="
-              );
-
               setSocketConnected(
                 true
               );
@@ -1578,9 +1311,6 @@ export const Section3ChatTimeline =
                 null
               );
 
-              /*
-               * Remove old subscriptions.
-               */
               subscriptionsRef.current.forEach(
                 (
                   subscription
@@ -1594,20 +1324,12 @@ export const Section3ChatTimeline =
               subscriptionsRef.current =
                 [];
 
-              /*
-               * Subscribe - FIXED: Added type guard to ensure socketTopics is an array
-               */
               if (Array.isArray(socketTopics)) {
                 socketTopics.forEach(
                   (topic) => {
                     if (!topic) {
                       return;
                     }
-
-                    console.log(
-                      "📡 SUBSCRIBING TO:",
-                      topic
-                    );
 
                     try {
                       const subscription =
@@ -1616,39 +1338,11 @@ export const Section3ChatTimeline =
                           (
                             message: IMessage
                           ) => {
-                            console.log(
-                              "================================="
-                            );
-
-                            console.log(
-                              "📨 MESSAGE FROM TOPIC:",
-                              topic
-                            );
-
-                            console.log(
-                              "STOMP MESSAGE:",
-                              message
-                            );
-
-                            console.log(
-                              "STOMP BODY:",
-                              message.body
-                            );
-
-                            console.log(
-                              "================================="
-                            );
-
                             try {
                               const data =
                                 parseSocketBody(
                                   message
                                 );
-
-                              console.log(
-                                "PARSED SOCKET DATA:",
-                                data
-                              );
 
                               handleWebSocketMessage(
                                 data
@@ -1657,7 +1351,7 @@ export const Section3ChatTimeline =
                               error
                             ) {
                               console.error(
-                                "❌ SOCKET MESSAGE HANDLING ERROR:",
+                                "SOCKET MESSAGE HANDLING ERROR:",
                                 error
                               );
                             }
@@ -1671,26 +1365,17 @@ export const Section3ChatTimeline =
                       error
                     ) {
                       console.error(
-                        `❌ FAILED TO SUBSCRIBE TO ${topic}:`,
+                        `FAILED TO SUBSCRIBE TO ${topic}:`,
                         error
                       );
                     }
                   }
-                );
-              } else {
-                console.warn(
-                  "socketTopics is not an array:",
-                  socketTopics
                 );
               }
             },
 
             onDisconnect:
               () => {
-                console.log(
-                  "❌ WEBSOCKET DISCONNECTED"
-                );
-
                 setSocketConnected(
                   false
                 );
@@ -1698,11 +1383,6 @@ export const Section3ChatTimeline =
 
             onStompError:
               (frame) => {
-                console.error(
-                  "❌ STOMP ERROR:",
-                  frame
-                );
-
                 setSocketConnected(
                   false
                 );
@@ -1715,12 +1395,7 @@ export const Section3ChatTimeline =
               },
 
             onWebSocketError:
-              (event) => {
-                console.error(
-                  "❌ WEBSOCKET ERROR:",
-                  event
-                );
-
+              () => {
                 setSocketConnected(
                   false
                 );
@@ -1738,12 +1413,7 @@ export const Section3ChatTimeline =
       }, [
         handleWebSocketMessage,
         socketTopics,
-        chatSendDestination,
       ]);
-
-    /* ========================================================
-       DISCONNECT
-    ======================================================== */
 
     const disconnectWebSocket =
       useCallback(
@@ -1787,10 +1457,6 @@ export const Section3ChatTimeline =
         []
       );
 
-    /* ========================================================
-       SOCKET LIFECYCLE
-    ======================================================== */
-
     useEffect(() => {
       isUnmountedRef.current =
         false;
@@ -1807,10 +1473,6 @@ export const Section3ChatTimeline =
       connectWebSocket,
       disconnectWebSocket,
     ]);
-
-    /* ========================================================
-       AUTO SCROLL
-    ======================================================== */
 
     useEffect(() => {
       const container =
@@ -1830,10 +1492,6 @@ export const Section3ChatTimeline =
       chatMessages.length,
       chatContainerRef,
     ]);
-
-    /* ========================================================
-       EMOJI
-    ======================================================== */
 
     const insertEmoji =
       useCallback(
@@ -1858,10 +1516,6 @@ export const Section3ChatTimeline =
           setChatInput,
         ]
       );
-
-    /* ========================================================
-       FILE SELECT
-    ======================================================== */
 
     const handleFileSelected =
       useCallback(
@@ -1951,10 +1605,6 @@ export const Section3ChatTimeline =
         ]
       );
 
-    /* ========================================================
-       ATTACHMENT BUTTON
-    ======================================================== */
-
     const handleSendAttachment =
       useCallback(
         (type: string) => {
@@ -2008,10 +1658,6 @@ export const Section3ChatTimeline =
         ]
       );
 
-    /* ========================================================
-       SEND THROUGH SOCKET
-    ======================================================== */
-
     const sendThroughSocket =
       useCallback(
         (payload: any) => {
@@ -2022,36 +1668,10 @@ export const Section3ChatTimeline =
             !client ||
             !client.connected
           ) {
-            console.warn(
-              "❌ Cannot send: WebSocket is not connected"
-            );
-
             return false;
           }
 
           try {
-            console.log(
-              "================================="
-            );
-
-            console.log(
-              "📤 SENDING WEBSOCKET MESSAGE"
-            );
-
-            console.log(
-              "DESTINATION:",
-              chatSendDestination
-            );
-
-            console.log(
-              "PAYLOAD:",
-              payload
-            );
-
-            console.log(
-              "================================="
-            );
-
             client.publish({
               destination:
                 chatSendDestination,
@@ -2062,14 +1682,7 @@ export const Section3ChatTimeline =
             });
 
             return true;
-          } catch (
-            error
-          ) {
-            console.error(
-              "❌ FAILED TO SEND WEBSOCKET MESSAGE:",
-              error
-            );
-
+          } catch {
             return false;
           }
         },
@@ -2078,16 +1691,8 @@ export const Section3ChatTimeline =
         ]
       );
 
-    /* ========================================================
-       SEND CHAT
-    ======================================================== */
-
     const handleSendChatMessage =
       useCallback(() => {
-        /*
-         * If parent owns sending,
-         * use parent implementation.
-         */
         if (
           externalHandleSendChatMessage
         ) {
@@ -2106,18 +1711,7 @@ export const Section3ChatTimeline =
           return;
         }
 
-        /*
-         * ======================================================
-         * TEXT MESSAGE
-         * ======================================================
-         */
-
         if (text) {
-          /*
-           * Unique client ID.
-           *
-           * Backend should ideally echo this ID.
-           */
           const clientMessageId =
             `client-${Date.now()}-${Math.random()
               .toString(36)
@@ -2126,11 +1720,6 @@ export const Section3ChatTimeline =
           const timestamp =
             new Date().toISOString();
 
-          /*
-           * Optimistic UI message.
-           *
-           * This appears immediately.
-           */
           const optimisticMessage: ChatMessage =
             {
               id: clientMessageId,
@@ -2157,18 +1746,10 @@ export const Section3ChatTimeline =
                 "sending",
             };
 
-          /*
-           * FIRST:
-           * update UI.
-           */
           addLocalChatMessage(
             optimisticMessage
           );
 
-          /*
-           * SECOND:
-           * send to backend.
-           */
           const payload = {
             action:
               "SEND_MESSAGE",
@@ -2209,10 +1790,6 @@ export const Section3ChatTimeline =
               payload
             );
 
-          /*
-           * If socket failed,
-           * mark optimistic message failed.
-           */
           if (!sent) {
             setInternalChatMessages(
               (previous) =>
@@ -2232,17 +1809,8 @@ export const Section3ChatTimeline =
             return;
           }
 
-          /*
-           * Clear input immediately.
-           */
           setChatInput("");
         }
-
-        /*
-         * ======================================================
-         * ATTACHMENT
-         * ======================================================
-         */
 
         if (
           chatPreviewFile
@@ -2255,9 +1823,6 @@ export const Section3ChatTimeline =
           const timestamp =
             new Date().toISOString();
 
-          /*
-           * Optimistic attachment.
-           */
           const optimisticMessage: ChatMessage =
             {
               id: clientMessageId,
@@ -2374,10 +1939,6 @@ export const Section3ChatTimeline =
         addLocalChatMessage,
       ]);
 
-    /* ========================================================
-       RECORDING TIMER
-    ======================================================== */
-
     useEffect(() => {
       if (
         !internalIsRecording
@@ -2404,10 +1965,6 @@ export const Section3ChatTimeline =
     }, [
       internalIsRecording,
     ]);
-
-    /* ========================================================
-       RECORDING
-    ======================================================== */
 
     const toggleRecording =
       useCallback(() => {
@@ -2437,24 +1994,17 @@ export const Section3ChatTimeline =
         externalToggleRecording,
       ]);
 
-    /* ========================================================
-       RENDER
-    ======================================================== */
-
     return (
       <Card>
         <CardContent className="p-4 space-y-4">
 
-          {/* HEADER */}
           <div className="flex items-center justify-between">
-
             <div>
               <div className="text-xs font-semibold text-default-500 uppercase tracking-wide">
                 Section 3: Conversation Timeline
               </div>
 
               <div className="flex items-center gap-1.5 mt-1">
-
                 <span
                   className={cn(
                     "w-2 h-2 rounded-full",
@@ -2463,13 +2013,11 @@ export const Section3ChatTimeline =
                       : "bg-red-500"
                   )}
                 />
-
                 <span className="text-[10px] text-default-500">
                   {socketConnected
                     ? "Connected"
                     : "Disconnected"}
                 </span>
-
               </div>
             </div>
 
@@ -2478,42 +2026,33 @@ export const Section3ChatTimeline =
                 {socketError}
               </div>
             )}
-
           </div>
 
-          {/* CHAT */}
           <div className="border border-default-200 rounded-lg overflow-hidden flex flex-col">
-
-            {/* CHAT BODY */}
             <div
               ref={chatContainerRef as React.LegacyRef<HTMLDivElement>}
               className="p-4 space-y-2 overflow-y-auto max-h-[480px] min-h-[480px] flex flex-col no-scrollbar scroll-smooth"
             >
-
-              {chatMessages.length ===
-                0 && (
+              {chatMessages.length === 0 && (
                 <div className="flex-1 flex items-center justify-center">
-
                   <div className="text-center text-default-400">
-
                     <Icon
                       icon="heroicons:chat-bubble-left-right"
                       className="w-10 h-10 mx-auto mb-2"
                     />
-
                     <div className="text-xs">
                       No messages yet
                     </div>
-
                   </div>
-
                 </div>
               )}
 
               {chatMessages.map(
                 (
-                  msg: ChatMessage
+                  rawMsg: any,
+                  index: number
                 ) => {
+                  const msg = normalizeChatMessage(rawMsg) || rawMsg;
                   const isCustomer =
                     normalizeSender(
                       msg.sender
@@ -2524,7 +2063,7 @@ export const Section3ChatTimeline =
                     <div
                       key={getMessageKey(
                         msg
-                      )}
+                      ) || index}
                       className={cn(
                         "flex w-full",
                         isCustomer
@@ -2532,7 +2071,6 @@ export const Section3ChatTimeline =
                           : "justify-end"
                       )}
                     >
-
                       <div
                         className={cn(
                           "max-w-[72%] rounded-2xl px-3 py-2 shadow-sm text-xs",
@@ -2541,8 +2079,6 @@ export const Section3ChatTimeline =
                             : "bg-emerald-500 text-white rounded-tr-sm"
                         )}
                       >
-
-                        {/* TEXT */}
                         {msg.type ===
                           "text" && (
                           <div className="leading-relaxed whitespace-pre-wrap break-words">
@@ -2552,11 +2088,9 @@ export const Section3ChatTimeline =
                           </div>
                         )}
 
-                        {/* REPLY */}
                         {msg.type ===
                           "reply" && (
                           <div className="space-y-1.5">
-
                             {msg.replyTo && (
                               <div
                                 className={cn(
@@ -2577,11 +2111,9 @@ export const Section3ChatTimeline =
                                 msg.content
                               }
                             </div>
-
                           </div>
                         )}
 
-                        {/* FILE */}
                         {msg.type ===
                           "file" && (
                           <div
@@ -2592,7 +2124,6 @@ export const Section3ChatTimeline =
                                 : "bg-white/10"
                             )}
                           >
-
                             <div
                               className={cn(
                                 "p-2 rounded flex items-center justify-center",
@@ -2608,7 +2139,6 @@ export const Section3ChatTimeline =
                             </div>
 
                             <div className="min-w-0 flex-1">
-
                               <div className="font-semibold truncate">
                                 {
                                   msg.fileName
@@ -2627,7 +2157,6 @@ export const Section3ChatTimeline =
                                   msg.fileSize
                                 }
                               </div>
-
                             </div>
 
                             {msg.url && (
@@ -2655,18 +2184,14 @@ export const Section3ChatTimeline =
                                 />
                               </a>
                             )}
-
                           </div>
                         )}
 
-                        {/* IMAGE */}
                         {msg.type ===
                           "image" && (
                           <div className="space-y-1.5">
-
                             {msg.thumbnail && (
                               <div className="rounded-xl overflow-hidden max-w-[200px]">
-
                                 <img
                                   src={
                                     msg.thumbnail
@@ -2677,7 +2202,6 @@ export const Section3ChatTimeline =
                                   }
                                   className="w-full h-auto object-cover max-h-[140px]"
                                 />
-
                               </div>
                             )}
 
@@ -2695,15 +2219,12 @@ export const Section3ChatTimeline =
                                 }
                               </div>
                             )}
-
                           </div>
                         )}
 
-                        {/* VIDEO */}
                         {msg.type ===
                           "video" && (
                           <div className="space-y-2">
-
                             {msg.url && (
                               <video
                                 src={
@@ -2721,15 +2242,12 @@ export const Section3ChatTimeline =
                                 }
                               </div>
                             )}
-
                           </div>
                         )}
 
-                        {/* AUDIO */}
                         {msg.type ===
                           "audio" && (
                           <div className="flex items-center gap-2 min-w-[180px]">
-
                             {msg.url ? (
                               <audio
                                 controls
@@ -2773,11 +2291,9 @@ export const Section3ChatTimeline =
                                 </span>
                               </>
                             )}
-
                           </div>
                         )}
 
-                        {/* TIME */}
                         <div
                           className={cn(
                             "flex items-center justify-end gap-1 mt-1 text-[9px] select-none",
@@ -2786,7 +2302,6 @@ export const Section3ChatTimeline =
                               : "text-white/70"
                           )}
                         >
-
                           <span>
                             {msg.time}
                           </span>
@@ -2813,22 +2328,16 @@ export const Section3ChatTimeline =
                               )}
                             </>
                           )}
-
                         </div>
-
                       </div>
-
                     </div>
                   );
                 }
               )}
-
             </div>
 
-            {/* EMOJI PICKER */}
             {showEmojiPicker && (
               <div className="px-4 py-3 bg-default-50 border-t border-default-200 flex flex-wrap gap-2">
-
                 {quickEmojis.map(
                   (emoji) => (
                     <button
@@ -2845,14 +2354,11 @@ export const Section3ChatTimeline =
                     </button>
                   )
                 )}
-
               </div>
             )}
 
-            {/* ATTACH MENU */}
             {showAttachMenu && (
               <div className="px-4 py-2 bg-default-50 border-t border-default-200 flex gap-3 relative">
-
                 <input
                   type="file"
                   ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
@@ -2903,7 +2409,6 @@ export const Section3ChatTimeline =
                       }
                       className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg hover:bg-default-200 transition-colors"
                     >
-
                       <span
                         className={`${color} flex items-center justify-center w-9 h-9 rounded-full bg-default-200`}
                       >
@@ -2917,20 +2422,15 @@ export const Section3ChatTimeline =
                       <span className="text-[10px] text-default-600">
                         {label}
                       </span>
-
                     </button>
                   )
                 )}
-
               </div>
             )}
 
-            {/* PREVIEW */}
             {chatPreviewFile && (
               <div className="px-4 py-3 bg-default-50 border-t border-default-200 flex items-center justify-between">
-
                 <div className="flex items-center gap-3">
-
                   {chatPreviewFile.type ===
                     "image" &&
                   chatPreviewFile.thumbnail ? (
@@ -2951,7 +2451,6 @@ export const Section3ChatTimeline =
                   )}
 
                   <div>
-
                     <div className="text-sm font-medium">
                       {
                         chatPreviewFile.fileName ||
@@ -2966,9 +2465,7 @@ export const Section3ChatTimeline =
                         "Ready to send"
                       }
                     </div>
-
                   </div>
-
                 </div>
 
                 <button
@@ -2985,16 +2482,12 @@ export const Section3ChatTimeline =
                     className="w-5 h-5"
                   />
                 </button>
-
               </div>
             )}
 
-            {/* INPUT */}
             <div className="px-3 py-2.5 bg-default-50 border-t border-default-200 flex items-center gap-3">
-
               {!isRecording && (
                 <>
-                  {/* EMOJI */}
                   <button
                     type="button"
                     onClick={() => {
@@ -3023,7 +2516,6 @@ export const Section3ChatTimeline =
                     />
                   </button>
 
-                  {/* ATTACH */}
                   <button
                     type="button"
                     onClick={() => {
@@ -3054,10 +2546,8 @@ export const Section3ChatTimeline =
                 </>
               )}
 
-              {/* RECORDING */}
               {isRecording ? (
                 <div className="flex-1 h-9 rounded-full bg-red-50 text-sm border border-red-200 px-4 flex items-center gap-2">
-
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
 
                   <span className="text-red-500 font-medium">
@@ -3075,7 +2565,6 @@ export const Section3ChatTimeline =
                     {recordingTime %
                       60}
                   </span>
-
                 </div>
               ) : (
                 <Input
@@ -3107,106 +2596,65 @@ export const Section3ChatTimeline =
                 />
               )}
 
-              {/* SEND */}
               {!isRecording &&
                 (chatInput.trim() ||
                   chatPreviewFile) && (
-                <button
-                  type="button"
-                  onClick={
-                    handleSendChatMessage
-                  }
-                  disabled={
-                    !socketConnected
-                  }
-                  className={cn(
-                    "h-9 px-4 rounded-full shrink-0 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm",
-                    socketConnected
-                      ? "bg-emerald-500 hover:bg-emerald-600"
-                      : "bg-gray-400 cursor-not-allowed"
-                  )}
-                >
-                  <Icon
-                    icon="heroicons:paper-airplane"
-                    width={15}
-                    height={15}
-                  />
+                  <button
+                    type="button"
+                    onClick={
+                      handleSendChatMessage
+                    }
+                    disabled={
+                      !socketConnected
+                    }
+                    className={cn(
+                      "h-9 px-4 rounded-full shrink-0 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm",
+                      socketConnected
+                        ? "bg-emerald-500 hover:bg-emerald-600"
+                        : "bg-gray-400 cursor-not-allowed"
+                    )}
+                  >
+                    <Icon
+                      icon="heroicons:paper-airplane"
+                      width={15}
+                      height={15}
+                    />
 
-                  Send
-                </button>
-              )}
+                    Send
+                  </button>
+                )}
 
-              {/* MIC */}
               {!chatInput.trim() &&
                 !chatPreviewFile && (
-                <button
-                  type="button"
-                  onClick={
-                    toggleRecording
-                  }
-                  className={cn(
-                    "h-9 w-9 rounded-full shrink-0 text-white flex items-center justify-center transition-colors shadow-sm",
-                    isRecording
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-emerald-500 hover:bg-emerald-600"
-                  )}
-                >
-                  {isRecording ? (
-                    <Icon
-                      icon="heroicons:stop"
-                      width={17}
-                      height={17}
-                    />
-                  ) : (
-                    <Icon
-                      icon="heroicons:microphone"
-                      width={17}
-                      height={17}
-                    />
-                  )}
-                </button>
-              )}
-
-            </div>
-
-          </div>
-
-          {/* DEBUG */}
-          {process.env
-            .NODE_ENV ===
-            "development" && (
-            <div className="text-[10px] text-default-400 space-y-1">
-
-              <div>
-                WebSocket:{" "}
-                {socketConnected
-                  ? "CONNECTED"
-                  : "DISCONNECTED"}
-              </div>
-
-              <div>
-                Messages:{" "}
-                {
-                  chatMessages.length
-                }
-              </div>
-
-              <div>
-                Topics:{" "}
-                {socketTopics.join(
-                  ", "
+                  <button
+                    type="button"
+                    onClick={
+                      toggleRecording
+                    }
+                    className={cn(
+                      "h-9 w-9 rounded-full shrink-0 text-white flex items-center justify-center transition-colors shadow-sm",
+                      isRecording
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-emerald-500 hover:bg-emerald-600"
+                    )}
+                  >
+                    {isRecording ? (
+                      <Icon
+                        icon="heroicons:stop"
+                        width={17}
+                        height={17}
+                      />
+                    ) : (
+                      <Icon
+                        icon="heroicons:microphone"
+                        width={17}
+                        height={17}
+                      />
+                    )}
+                  </button>
                 )}
-              </div>
-
-              <div>
-                Send:{" "}
-                {
-                  chatSendDestination
-                }
-              </div>
-
             </div>
-          )}
+          </div>
 
         </CardContent>
       </Card>
