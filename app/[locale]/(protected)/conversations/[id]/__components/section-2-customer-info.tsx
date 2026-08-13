@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { User, Tag, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-=======
 "use client";
 
 import React, {
@@ -114,7 +104,6 @@ interface Section2CustomerInfoProps {
    COMPONENT
 ============================================================ */
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
 export const Section2CustomerInfo = ({
   conversation,
   customerInfo,
@@ -122,12 +111,6 @@ export const Section2CustomerInfo = ({
   tagColors,
   openEditContact,
   openAddTag,
-<<<<<<< HEAD
-}: any) => {
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-=======
   className, // 👈 Destructured className here
 }: Section2CustomerInfoProps) => {
   /* ==========================================================
@@ -915,19 +898,10 @@ export const Section2CustomerInfo = ({
 
         {/* HEADER */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
         <div className="flex items-center justify-between">
           <div className="text-xs font-semibold text-default-500 uppercase tracking-wide">
             Section 2: Customer Information
           </div>
-<<<<<<< HEAD
-        </div>
-
-        <div className="flex items-center gap-3 pb-2 border-b border-default-200">
-          <Avatar className="h-10 w-10 shrink-0 bg-default-100 border border-default-200">
-            {conversation.customerImage ? (
-              <AvatarImage src={conversation.customerImage} />
-=======
 
           <div className="flex items-center gap-1.5">
             <span
@@ -961,21 +935,12 @@ export const Section2CustomerInfo = ({
                   "Customer"
                 }
               />
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             ) : (
               <AvatarFallback className="text-xs text-default-700">
                 {customerInitials || "AB"}
               </AvatarFallback>
             )}
           </Avatar>
-<<<<<<< HEAD
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-default-800 truncate">
-              {customerInfo.customerName}
-            </div>
-            <div className="text-[11px] text-default-500 truncate">
-              Since {customerInfo.customerSince}
-=======
 
           <div className="min-w-0">
             <div className="text-sm font-semibold text-default-800 truncate">
@@ -987,31 +952,20 @@ export const Section2CustomerInfo = ({
               Since{" "}
               {customerInfo?.customerSince ||
                 "-"}
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             </div>
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-=======
         {/* CUSTOMER INFORMATION */}
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-6">
 
           {/* NAME */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28">
               Name
             </span>
-<<<<<<< HEAD
-            <span className="text-sm font-medium text-default-800 truncate">
-              {customerInfo.customerName}
-            </span>
-          </div>
-=======
 
             <span className="text-sm font-medium text-default-800 truncate">
               {customerInfo?.customerName ||
@@ -1021,17 +975,10 @@ export const Section2CustomerInfo = ({
 
           {/* WHATSAPP */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28">
               WhatsApp
             </span>
-<<<<<<< HEAD
-            <span className="text-sm font-medium truncate text-blue-600">
-              {customerInfo.whatsappName}
-            </span>
-          </div>
-=======
 
             <span className="text-sm font-medium truncate text-blue-600">
               {customerInfo?.whatsappName ||
@@ -1041,17 +988,10 @@ export const Section2CustomerInfo = ({
 
           {/* PHONE */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28">
               Phone
             </span>
-<<<<<<< HEAD
-            <span className="text-sm font-medium text-default-800 truncate">
-              {customerInfo.phone}
-            </span>
-          </div>
-=======
 
             <span className="text-sm font-medium text-default-800 truncate">
               {customerInfo?.phone || "-"}
@@ -1060,17 +1000,10 @@ export const Section2CustomerInfo = ({
 
           {/* EMAIL */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28">
               Email
             </span>
-<<<<<<< HEAD
-            <span className="text-sm font-medium text-default-800 truncate">
-              {customerInfo.email}
-            </span>
-          </div>
-=======
 
             <span className="text-sm font-medium text-default-800 truncate">
               {customerInfo?.email || "-"}
@@ -1079,31 +1012,10 @@ export const Section2CustomerInfo = ({
 
           {/* TAGS */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="col-span-2 flex items-start gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28 pt-0.5">
               Tags
             </span>
-<<<<<<< HEAD
-            <div className="flex flex-wrap gap-1.5 min-w-0">
-              {customerInfo.tags.length > 0 ? (
-                customerInfo.tags.map((tag: string, idx: number) => (
-                  <Badge
-                    key={idx}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
-                      tagColors[tag] || "bg-default-200 text-default-700"
-                    )}
-                  >
-                    {tag}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-xs text-default-400">No tags</span>
-              )}
-            </div>
-          </div>
-=======
 
             <div className="flex flex-wrap gap-1.5 min-w-0">
               {loadingTags ? (
@@ -1136,28 +1048,18 @@ export const Section2CustomerInfo = ({
 
           {/* CUSTOMER SINCE */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
           <div className="flex items-baseline gap-2 min-w-0 col-span-2">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-28">
               Customer Since
             </span>
-<<<<<<< HEAD
-            <span className="text-sm font-medium text-default-800 truncate">
-              {customerInfo.customerSince}
-=======
 
             <span className="text-sm font-medium text-default-800 truncate">
               {customerInfo?.customerSince ||
                 "-"}
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             </span>
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="pt-2 mt-1 border-t border-default-200">
-          <div className="flex flex-wrap gap-1.5">
-=======
         {/* BUTTONS */}
 
         <div className="pt-2 mt-1 border-t border-default-200">
@@ -1165,7 +1067,6 @@ export const Section2CustomerInfo = ({
 
             {/* EDIT CONTACT */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <Button
               variant="outline"
               size="sm"
@@ -1175,12 +1076,9 @@ export const Section2CustomerInfo = ({
               <User className="w-3.5 h-3.5 me-1.5" />
               Edit Contact
             </Button>
-<<<<<<< HEAD
-=======
 
             {/* ADD TAG */}
 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             <Button
               variant="outline"
               size="sm"
@@ -1190,18 +1088,6 @@ export const Section2CustomerInfo = ({
               <Tag className="w-3.5 h-3.5 me-1.5" />
               Add Tag
             </Button>
-<<<<<<< HEAD
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs !border !border-default-200 bg-background hover:bg-transparent hover:text-inherit hover:ring-0 hover:border-default-200"
-            >
-              <Eye className="w-3.5 h-3.5 me-1.5" />
-              View Contact
-            </Button>
-          </div>
-        </div>
-=======
 
             {/* VIEW CONTACT */}
 
@@ -1375,7 +1261,6 @@ export const Section2CustomerInfo = ({
             )}
           </DialogContent>
         </Dialog>
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
       </CardContent>
     </Card>
   );

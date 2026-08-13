@@ -26,11 +26,7 @@ export const Section1Header = ({
               Conversation No.
             </span>
             <span className="text-sm font-semibold text-default-800 truncate">
-<<<<<<< HEAD
-              #{conversation.conversationNo}
-=======
               #{conversation.conversationNo} 
->>>>>>> 1baa7e2c9c410fdd1e71ad464aea08b119d620c0
             </span>
           </div>
           <div className="flex items-baseline gap-2 min-w-0">
