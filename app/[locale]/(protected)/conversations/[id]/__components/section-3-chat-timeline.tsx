@@ -150,9 +150,7 @@ type Section3ChatTimelineProps = {
     React.SetStateAction<boolean>
   >;
 
-  fileInputRef?: React.RefObject<
-    HTMLInputElement | null
-  >;
+  fileInputRef?: React.RefObject<HTMLInputElement | null>;
 
   handleFileSelected?: (
     event: React.ChangeEvent<HTMLInputElement>
@@ -1007,9 +1005,9 @@ export const Section3ChatTimeline =
         null
       );
 
-    // FIX: Properly merge refs - use the external ref if provided, otherwise use internal
-    const chatContainerRef = 
-      externalChatContainerRef ?? internalChatContainerRef;
+    const chatContainerRef =
+      externalChatContainerRef ??
+      internalChatContainerRef;
 
     const internalFileInputRef =
       useRef<HTMLInputElement | null>(
@@ -2857,9 +2855,7 @@ export const Section3ChatTimeline =
 
                 <input
                   type="file"
-                  ref={
-                    fileInputRef
-                  }
+                  ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
                   className="hidden"
                   onChange={
                     handleFileSelected
