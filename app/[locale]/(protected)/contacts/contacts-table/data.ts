@@ -1,5 +1,7 @@
 import { DataProps } from "./columns";
 
+const API_URL = "https://whatsapi.trpgps.com/allcontactentity";
+
 const avatars = [
   "/images/avatar/avatar-1.png",
   "/images/avatar/avatar-2.png",
@@ -8,87 +10,91 @@ const avatars = [
   "/images/avatar/avatar-5.png",
 ];
 
-const customerNames = [
-  "Jenny Wilson",
-  "Emily Davis",
-  "Laura Smith",
-  "Sarah Johnson",
-  "Rachel Brown",
-];
+export const data: DataProps[] = [];
 
-const whatsappNames = [
-  "Jenny W",
-  "Emily",
-  "Laura S",
-  "Sarah J",
-  "Rachel",
-];
+fetch(API_URL, {
+  method: "GET",
+  headers: {
+    Accept: "application/json",
+    "ngrok-skip-browser-warning": "1",
+  },
+})
+  .then((response) => {
+    if (!response.ok) {
+      throw new
+       Error(
+        `Failed to fetch contacts: ${response.status}`
+      );
+    }
 
-const mobileNumbers = [
-  "+1 (555) 123-4567",
-  "+44 20 7946 0958",
-  "+61 2 9876 5432",
-  "+33 1 23 45 67 89",
-  "+81 3-1234-5678",
-];
+    return response.json();
+  })
+  .then((contacts) => {
+    if (!Array.isArray(contacts)) {
+      throw new Error("API response is not an array");
+    }
 
-const emails = [
-  "jenny@example.com",
-  "emily@example.com",
-  "laura@example.com",
-  "sarah@example.com",
-  "rachel@example.com",
-];
+          console.log(" Contacts ");
+          console.log( contacts);
+          console.log(" Contacts ");
 
-const allTags = [
-  ["VIP", "Priority"],
-  ["Support"],
-  ["Sales", "New"],
-  ["Returning", "Support"],
-  ["VIP"],
-];
 
-const totalConversations = [
-  15,
-  8,
-  24,
-  3,
-  12,
-];
 
-const lastConversations = [
-  "2 minutes ago",
-  "5 minutes ago",
-  "12 minutes ago",
-  "28 minutes ago",
-  "1 hour ago",
-];
+    contacts.forEach((contact: any, index: number) => {
+      data.push({
+        id: contact.id,
 
-const createdDates = [
-  "Aug 3, 2026 09:12 AM",
-  "Aug 3, 2026 10:45 AM",
-  "Aug 3, 2026 02:30 PM",
-  "Aug 4, 2026 08:05 AM",
-  "Aug 4, 2026 11:20 AM",
-];
+        contactId:
+          contact.tenantid?.toString() ||
+          `CUS-${String(1000 + index).padStart(4, "0")}`,
 
-export const data: DataProps[] = Array.from({ length: 20 }).map((_, idx) => {
-  return {
-    id: idx + 1,
-    contactId: `CUS-${String(1000 + idx).padStart(4, "0")}`,
-    customerName: customerNames[idx % customerNames.length],
-    customerImage: avatars[idx % avatars.length],
-    whatsappName: whatsappNames[idx % whatsappNames.length],
-    mobile: mobileNumbers[idx % mobileNumbers.length],
-    email: emails[idx % emails.length],
-    tags: allTags[idx % allTags.length],
-    totalConversations: totalConversations[idx % totalConversations.length],
-    lastConversation: lastConversations[idx % lastConversations.length],
-    createdAt: createdDates[idx % createdDates.length],
-    action: null,
-  };
-});
+        customerName:
+          contact.profilename ||
+          contact.customname ||
+          "",
+
+        customerImage:
+          avatars[index % avatars.length],
+
+        whatsappName:
+          contact.whatsappprofilename ||
+          "",
+
+        mobile:
+          contact.phonenumber ||
+          "",
+
+        email:
+          contact.email ||
+          "",
+
+        tags:
+          Array.isArray(contact.tags)
+            ? contact.tags
+            : [],
+
+        totalConversations:
+          contact.totalconversations || 0,
+
+        lastConversation:
+          contact.lastconversation || "",
+
+        createdAt:
+          contact.createdat || "",
+
+        action: null,
+      });
+    });
+
+    console.log("Contact data:", data);
+  })
+  .catch((error) => {
+    console.error("Failed to load contacts:", error);
+  });
 
 export const getContactById = (id: string | number) => {
-  return data.find((item) => item.id.toString() === id.toString());
+  return data.find(
+    (item) =>
+      item.id.toString() === id.toString()
+  );
 };
