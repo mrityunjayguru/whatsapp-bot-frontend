@@ -1,6 +1,6 @@
 import { DataProps } from "./columns";
 
-const API_URL = "https://whatsapi.trpgps.com/allcontactentity";
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ;
 
 const avatars = [
   "/images/avatar/avatar-1.png",
@@ -12,7 +12,7 @@ const avatars = [
 
 export const data: DataProps[] = [];
 
-fetch(API_URL, {
+fetch(API_URL+"/allcontactentity", {
   method: "GET",
   headers: {
     Accept: "application/json",
@@ -35,9 +35,9 @@ fetch(API_URL, {
     }
 
           console.log(" Contacts ");
-          console.log( contacts);
           console.log(" Contacts ");
-
+          console.log(" Contacts ");
+          
 
 
     contacts.forEach((contact: any, index: number) => {
