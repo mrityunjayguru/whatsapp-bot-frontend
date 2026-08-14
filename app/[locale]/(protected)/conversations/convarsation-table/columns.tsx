@@ -21,8 +21,8 @@ import { Link } from "@/components/navigation";
 export type DataProps = {
   id: string | number;
   conversationNo: string;
-  profilename:string;
-  phonenumber:string;
+  profilename: string;
+  phonenumber: string;
   title: string;
   customerName: string;
   customerImage: string;
@@ -33,13 +33,14 @@ export type DataProps = {
     image: string;
   };
   department: string;
-  status: "open" | "in-progress" | "closed" | "pending";
+  status: "open" | "in-progress" | "closed" | "pending" | string;
   createdDate: string;
   lastMessage: string;
   lastActivity: string;
   unread: number;
   isChatbot: boolean;
-  action: React.ReactNode;
+  action?: React.ReactNode;
+  [key: string]: any;
 }
 
 const tagColors: Record<string, string> = {

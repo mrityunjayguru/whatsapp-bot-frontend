@@ -91,6 +91,20 @@ export function getMenuList(pathname: string, t: any): Group[] {
     },
     {
       groupLabel: "",
+      id: "main-tags",
+      menus: [
+        {
+          id: "main-tags",
+          href: "/tags",
+          label: t("tags"),
+          active: pathname.includes("/tags"),
+          icon: "heroicons-outline:tag",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
       id: "main-settings",
       menus: [
         {
