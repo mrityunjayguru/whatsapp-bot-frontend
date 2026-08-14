@@ -9,7 +9,7 @@ import {
 import {
   ColumnDef,
 } from "@tanstack/react-table"
-import { Eye, Bell } from "lucide-react"
+import { Eye, Bell, MoreHorizontal } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -20,27 +20,17 @@ import { Link } from "@/components/navigation";
 
 export type DataProps = {
   id: string | number;
-  conversationNo: string;
-  profilename: string;
-  phonenumber: string;
-  title: string;
+  contactId: string;
   customerName: string;
   customerImage: string;
+  whatsappName: string;
   mobile: string;
+  email: string;
   tags: string[];
-  assignedTo: {
-    name: string;
-    image: string;
-  };
-  department: string;
-  status: "open" | "in-progress" | "closed" | "pending" | string;
-  createdDate: string;
-  lastMessage: string;
-  lastActivity: string;
-  unread: number;
-  isChatbot: boolean;
-  action?: React.ReactNode;
-  [key: string]: any;
+  totalConversations: number;
+  lastConversation: string;
+  createdAt: string;
+  action: React.ReactNode;
 }
 
 const tagColors: Record<string, string> = {
@@ -79,10 +69,10 @@ export const columns: ColumnDef<DataProps>[] = [
     size: 64,
   },
   {
-    accessorKey: "conversationNo",
-    header: "Conversation No.",
+    accessorKey: "contactId",
+    header: "Contact ID",
     cell: ({ row }) => (
-      <span className="text-sm font-medium text-default-700 whitespace-nowrap shrink-0">#{row.getValue("conversationNo")}</span>
+      <span className="text-sm font-medium text-default-700 whitespace-nowrap shrink-0">#{row.getValue("contactId")}</span>
     ),
     size: 150,
   },
@@ -115,12 +105,28 @@ export const columns: ColumnDef<DataProps>[] = [
     size: 200,
   },
   {
+    accessorKey: "whatsappName",
+    header: "WhatsApp Name",
+    cell: ({ row }) => (
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("whatsappName")}</span>
+    ),
+    size: 160,
+  },
+  {
     accessorKey: "mobile",
     header: "Mobile",
     cell: ({ row }) => (
       <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("mobile")}</span>
     ),
     size: 160,
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+    cell: ({ row }) => (
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("email")}</span>
+    ),
+    size: 220,
   },
   {
     accessorKey: "tags",
@@ -143,107 +149,28 @@ export const columns: ColumnDef<DataProps>[] = [
     size: 220,
   },
   {
-    accessorKey: "assignedTo",
-    header: "Assigned To",
-    cell: ({ row }) => {
-      const user = row.original.assignedTo;
-      const initials = user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-      return (
-        <div className="font-medium text-card-foreground/80 shrink-0">
-          <div className="flex gap-2 items-center whitespace-nowrap">
-            <Avatar
-              className="rounded-full w-7 h-7 bg-transparent hover:bg-transparent shadow-none border-none shrink-0"
-            >
-              {user?.image ? (
-                <AvatarImage src={user.image} />
-              ) : (
-                <AvatarFallback className="text-[10px]">{initials || "UN"}</AvatarFallback>
-              )}
-            </Avatar>
-            <span className="text-sm text-default-700 whitespace-nowrap">
-              {user?.name ?? "Unassigned"}
-            </span>
-          </div>
-        </div>
-      )
-    },
-    size: 190,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const statusColors: Record<string, string> = {
-        open: "bg-blue-500/15 text-blue-600 border-blue-500/20",
-        "in-progress": "bg-amber-500/15 text-amber-600 border-amber-500/20",
-        closed: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
-        pending: "bg-default-300/40 text-default-700 border-default-300"
-      };
-      const statusLabels: Record<string, string> = {
-        open: "Open",
-        "in-progress": "In Progress",
-        closed: "Closed",
-        pending: "Pending"
-      };
-      const status = row.getValue<string>("status");
-      const statusStyles = statusColors[status] || "bg-default-200 text-default-700";
-      const statusLabel = statusLabels[status] || status;
-      return (
-        <Badge
-          className={cn("rounded-full px-3 py-1 text-xs font-medium border whitespace-nowrap shrink-0", statusStyles)}
-        >
-          {statusLabel}
-        </Badge>
-      );
-    },
-    size: 130,
-  },
-  {
-    accessorKey: "lastMessage",
-    header: "Last Message",
-    cell: ({ row }) => {
-      const message = row.getValue<string>("lastMessage") || "";
-      return (
-        <span
-          className="text-sm text-default-600 whitespace-nowrap text-ellipsis overflow-hidden block shrink-0"
-          style={{ maxWidth: 320, minWidth: 320 }}
-          title={message}
-        >
-          {message}
-        </span>
-      )
-    },
-    size: 320,
-  },
-  {
-    accessorKey: "lastActivity",
-    header: "Last Activity",
+    accessorKey: "totalConversations",
+    header: "Total Conversations",
     cell: ({ row }) => (
-      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("lastActivity")}</span>
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("totalConversations")} Conversations</span>
+    ),
+    size: 150,
+  },
+  {
+    accessorKey: "lastConversation",
+    header: "Last Conversation",
+    cell: ({ row }) => (
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("lastConversation")}</span>
     ),
     size: 160,
   },
   {
-    accessorKey: "unread",
-    header: "Unread",
-    cell: ({ row }) => {
-      const count = row.getValue<number>("unread") || 0;
-      return (
-        <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-          {count > 0 ? (
-            <>
-              <Bell className="w-4 h-4 text-blue-500 shrink-0" />
-              <Badge className="rounded-full bg-blue-500 text-white text-xs font-semibold min-w-[22px] h-[22px] flex items-center justify-center px-1.5 whitespace-nowrap shrink-0">
-                {count}
-              </Badge>
-            </>
-          ) : (
-            <span className="text-sm text-default-400 whitespace-nowrap">—</span>
-          )}
-        </div>
-      )
-    },
-    size: 100,
+    accessorKey: "createdAt",
+    header: "Created At",
+    cell: ({ row }) => (
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("createdAt")}</span>
+    ),
+    size: 180,
   },
   {
     id: "actions",
@@ -251,14 +178,13 @@ export const columns: ColumnDef<DataProps>[] = [
     header: "Action",
     enableHiding: false,
     cell: ({ row }) => {
-      const convId = row.original.phonenumber;
-      
+      const convId = row.original.id;
       return (
         <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={`/conversations/${convId}`}>
+                <Link href={`/contacts/${convId}`}>
                   <Button
                     variant="outline"
                     size="icon"
@@ -270,7 +196,7 @@ export const columns: ColumnDef<DataProps>[] = [
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p>View Conversation</p>
+                <p>View Contact</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

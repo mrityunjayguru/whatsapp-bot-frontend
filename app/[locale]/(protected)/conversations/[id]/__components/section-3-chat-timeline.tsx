@@ -1,42 +1,20 @@
-"use client";
-
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
-import {
-  Client,
-  IMessage,
-  StompSubscription,
-} from "@stomp/stompjs";
+import { Client, IMessage, IFrame, StompSubscription } from "@stomp/stompjs";
 
 /* ============================================================
    CONFIG
 ============================================================ */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://whatsapi.trpgps.com";
-
-const WS_API_BASE_URL =
-  process.env.NEXT_PUBLIC_WS_API_BASE_URL ||
-  "wss://whatsapi.trpgps.com";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://whatsapi.trpgps.com";
+const WS_API_BASE_URL = process.env.NEXT_PUBLIC_WS_API_BASE_URL || "wss://whatsapi.trpgps.com";
 const WS_ENDPOINT = "/ws";
 
 const DEFAULT_SOCKET_TOPICS = "/topic/tags";
-
-const DEFAULT_CHAT_SEND_DESTINATION =
-  "/app/tags";
+const DEFAULT_CHAT_SEND_DESTINATION = "/app/tags";
 
 /* ============================================================
    TYPES
@@ -44,168 +22,74 @@ const DEFAULT_CHAT_SEND_DESTINATION =
 
 export type ChatMessage = {
   id: string | number;
-
-  sender:
-    | "customer"
-    | "agent"
-    | "user"
-    | "admin"
-    | string;
-
-  type?:
-    | "text"
-    | "reply"
-    | "file"
-    | "image"
-    | "audio"
-    | "video"
-    | string;
-
+  sender: "customer" | "agent" | "user" | "admin" | string;
+  type?: "text" | "reply" | "file" | "image" | "audio" | "video" | string;
   content?: string;
-
   replyTo?: string;
-
   fileName?: string;
-
-  fileSize?: string;
-
+  fileSize?: string | number;
   thumbnail?: string;
-
-  duration?: string;
-
+  duration?: string | number;
   time?: string;
-
   timestamp?: string;
-
   createdAt?: string;
-
   url?: string;
-
   status?: string;
-
   clientMessageId?: string;
-
   [key: string]: any;
 };
 
 export type ChatPreviewFile = {
-  type:
-    | "image"
-    | "file"
-    | "audio"
-    | "video";
-
+  type: "image" | "file" | "audio" | "video";
   fileName?: string;
-
-  fileSize?: string;
-
+  fileSize?: string | number;
   content?: string;
-
   thumbnail?: string;
-
   file?: File;
-
   url?: string;
 };
 
-type Section3ChatTimelineProps = {
-  chatMessages?: any[];
-
+export type Section3ChatTimelineProps = {
+  chatMessages?: ChatMessage[];
   chatContainerRef?: React.RefObject<HTMLDivElement | null>;
-
   showEmojiPicker?: boolean;
-
-  setShowEmojiPicker?: React.Dispatch<
-    React.SetStateAction<boolean>
-  >;
-
+  setShowEmojiPicker?: React.Dispatch<React.SetStateAction<boolean>>;
   quickEmojis?: string[];
-
-  insertEmoji?: (
-    emoji: string
-  ) => void;
-
+  insertEmoji?: (emoji: string) => void;
   showAttachMenu?: boolean;
-
-  setShowAttachMenu?: React.Dispatch<
-    React.SetStateAction<boolean>
-  >;
-
+  setShowAttachMenu?: React.Dispatch<React.SetStateAction<boolean>>;
   fileInputRef?: React.RefObject<HTMLInputElement | null>;
-
-  handleFileSelected?: (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => void;
-
-  handleSendAttachment?: (
-    type: string
-  ) => void;
-
-  chatPreviewFile?: any;
-
-  setChatPreviewFile?: any;
-
+  handleFileSelected?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSendAttachment?: (type: string) => void;
+  chatPreviewFile?: ChatPreviewFile | null;
+  setChatPreviewFile?: React.Dispatch<React.SetStateAction<any>>;
   isRecording?: boolean;
-
   recordingTime?: number;
-
   toggleRecording?: () => void;
-
   chatInput?: string;
-
-  setChatInput?: React.Dispatch<
-    React.SetStateAction<string>
-  >;
-
+  setChatInput?: React.Dispatch<React.SetStateAction<string>>;
   handleSendChatMessage?: () => void;
-
   socketTopic?: string | string[];
-
   chatSendDestination?: string;
-
   conversationId?: string | number;
-
   customerId?: string | number;
-
-  onSocketMessage?: (
-    message: any
-  ) => void;
+  onSocketMessage?: (message: any) => void;
 };
 
 /* ============================================================
-   EMOJIS
+   DEFAULT EMOJIS
 ============================================================ */
 
 const DEFAULT_QUICK_EMOJIS = [
-  "😀",
-  "😂",
-  "😍",
-  "🥰",
-  "😊",
-  "👍",
-  "👏",
-  "🙏",
-  "❤️",
-  "🔥",
-  "🎉",
-  "😢",
-  "😡",
-  "🤔",
-  "👋",
-  "✅",
+  "😀", "😂", "😍", "🥰", "😊", "👍", "👏", "🙏", "❤️", "🔥", "🎉", "😢", "😡", "🤔", "👋", "✅",
 ];
 
 /* ============================================================
    HELPERS
 ============================================================ */
 
-function parseSocketBody(
-  message: IMessage
-): any {
-  if (!message?.body) {
-    return null;
-  }
-
+function parseSocketBody(message: IMessage): any {
+  if (!message?.body) return null;
   try {
     return JSON.parse(message.body);
   } catch {
@@ -213,2438 +97,705 @@ function parseSocketBody(
   }
 }
 
-/* ============================================================
-   NORMALIZE SENDER
-============================================================ */
+function normalizeSender(messageOrSender: any): string {
+  if (!messageOrSender) return "customer";
 
-function normalizeSender(
-  sender: any
-): string {
-  const value = String(
-    sender ?? ""
-  ).toLowerCase();
+  let senderVal = "";
+  let statusVal = "";
+  let directionVal = "";
+  let idVal = "";
 
-  if (
-    value.includes("customer") ||
-    value.includes("client") ||
-    value.includes("contact")
-  ) {
-    return "customer";
+  if (typeof messageOrSender === "string") {
+    senderVal = messageOrSender.toLowerCase().trim();
+  } else if (typeof messageOrSender === "object") {
+    senderVal = String(messageOrSender.sender ?? messageOrSender.from ?? "").toLowerCase().trim();
+    statusVal = String(messageOrSender.status ?? messageOrSender.messagestatus ?? messageOrSender.messageStatus ?? "").toLowerCase().trim();
+    directionVal = String(messageOrSender.direction ?? messageOrSender.messageDirection ?? "").toLowerCase().trim();
+    idVal = String(messageOrSender.id ?? messageOrSender.clientMessageId ?? messageOrSender.messageId ?? "").toLowerCase().trim();
   }
 
+  // 1. Explicit employee / agent sender string
   if (
-    value.includes("agent") ||
-    value.includes("admin") ||
-    value.includes("staff") ||
-    value.includes("support") ||
-    value.includes("operator")
-  ) {
-    return "agent";
-  }
-
-  if (
-    value === "outgoing" ||
-    value === "outbound" ||
-    value === "me"
+    senderVal.includes("employee") ||
+    senderVal.includes("agent") ||
+    senderVal.includes("admin") ||
+    senderVal.includes("staff") ||
+    senderVal.includes("support") ||
+    senderVal.includes("operator") ||
+    senderVal.includes("user") ||
+    senderVal === "outgoing" ||
+    senderVal === "outbound" ||
+    senderVal === "me" ||
+    senderVal === "sent"
   ) {
     return "agent";
   }
 
+  // 2. Outgoing message status (sent, delivered, read, sending, outbound)
   if (
-    value === "incoming" ||
-    value === "inbound"
+    directionVal === "outgoing" ||
+    directionVal === "outbound" ||
+    directionVal === "sent" ||
+    statusVal === "sent" ||
+    statusVal === "delivered" ||
+    statusVal === "read" ||
+    statusVal === "sending" ||
+    statusVal === "outbound" ||
+    statusVal === "outgoing"
   ) {
-    return "customer";
+    return "agent";
   }
 
-  return value || "customer";
+  // 3. Sent message ID prefixes
+  if (
+    idVal.startsWith("sent") ||
+    idVal.startsWith("opt") ||
+    idVal.startsWith("local") ||
+    idVal.startsWith("client")
+  ) {
+    return "agent";
+  }
+
+  return "customer";
 }
 
-/* ============================================================
-   NORMALIZE MESSAGE TYPE
-============================================================ */
-
-function normalizeMessageType(
-  message: any
-): string {
+function normalizeMessageType(message: any): string {
   const rawType = String(
-    message?.type ??
-      message?.messageType ??
-      message?.mediaType ??
-      message?.contentType ??
-      "text"
+    message?.type ?? message?.messageType ?? message?.mediaType ?? message?.contentType ?? "text"
   ).toLowerCase();
 
-  if (
-    rawType.includes("image") ||
-    rawType === "photo"
-  ) {
-    return "image";
-  }
-
-  if (
-    rawType.includes("audio") ||
-    rawType === "voice"
-  ) {
-    return "audio";
-  }
-
-  if (
-    rawType.includes("video")
-  ) {
-    return "video";
-  }
-
-  if (
-    rawType.includes("file") ||
-    rawType.includes("document")
-  ) {
-    return "file";
-  }
-
-  if (
-    rawType.includes("reply")
-  ) {
-    return "reply";
-  }
-
+  if (rawType.includes("image") || rawType === "photo") return "image";
+  if (rawType.includes("audio") || rawType === "voice") return "audio";
+  if (rawType.includes("video")) return "video";
+  if (rawType.includes("file") || rawType.includes("document")) return "file";
+  if (rawType.includes("reply")) return "reply";
   return "text";
 }
 
-/* ============================================================
-   EXTRACT CHAT OBJECT
-============================================================ */
-
-function extractChatObject(
-  payload: any
-): any | null {
-  if (!payload) {
-    return null;
-  }
-
-  if (
-    typeof payload ===
-    "string"
-  ) {
+function extractChatObject(payload: any): any | null {
+  if (!payload) return null;
+  if (typeof payload === "string") {
     return {
       content: payload,
       sender: "customer",
       type: "text",
-      timestamp:
-        new Date().toISOString(),
+      timestamp: new Date().toISOString(),
     };
   }
-
-  if (
-    Array.isArray(payload)
-  ) {
-    for (
-      const item of payload
-    ) {
-      const result =
-        extractChatObject(item);
-
-      if (result) {
-        return result;
-      }
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const res = extractChatObject(item);
+      if (res) return res;
     }
-
     return null;
   }
+  if (typeof payload !== "object") return null;
 
   if (
-    typeof payload !==
-    "object"
-  ) {
-    return null;
-  }
-
-  if (
-    payload.messageId !==
-      undefined ||
+    payload.messageId !== undefined ||
     payload.id !== undefined ||
-    payload.uuid !==
-      undefined ||
+    payload.uuid !== undefined ||
     payload._id !== undefined ||
-    payload.sender !==
-      undefined ||
-    payload.senderType !==
-      undefined ||
-    payload.from !==
-      undefined ||
-    payload.author !==
-      undefined ||
-    payload.content !==
-      undefined ||
-    payload.text !==
-      undefined
+    payload.sender !== undefined ||
+    payload.content !== undefined ||
+    payload.text !== undefined ||
+    payload.messagebody !== undefined ||
+    payload.messageBody !== undefined
   ) {
     return payload;
   }
 
-  if (
-    payload.message !==
-    undefined
-  ) {
-    if (
-      typeof payload.message ===
-      "object"
-    ) {
-      const result =
-        extractChatObject(
-          payload.message
-        );
-
-      if (result) {
-        return {
-          ...payload.message,
-          clientMessageId:
-            payload.clientMessageId ??
-            payload.message
-              .clientMessageId,
-        };
-      }
+  if (payload.message !== undefined) {
+    if (typeof payload.message === "object") {
+      const res = extractChatObject(payload.message);
+      if (res) return { ...payload.message, clientMessageId: payload.clientMessageId ?? payload.message.clientMessageId };
     }
-
-    if (
-      typeof payload.message ===
-      "string"
-    ) {
-      return {
-        ...payload,
-        content:
-          payload.message,
-      };
+    if (typeof payload.message === "string") {
+      return { ...payload, content: payload.message };
     }
   }
 
-  if (
-    payload.data !==
-    undefined
-  ) {
-    const result =
-      extractChatObject(
-        payload.data
-      );
-
-    if (result) {
-      return result;
-    }
-  }
-
-  if (
-    payload.result !==
-    undefined
-  ) {
-    const result =
-      extractChatObject(
-        payload.result
-      );
-
-    if (result) {
-      return result;
-    }
-  }
-
-  if (
-    payload.payload !==
-    undefined
-  ) {
-    const result =
-      extractChatObject(
-        payload.payload
-      );
-
-    if (result) {
-      return result;
-    }
-  }
-
-  if (
-    payload.event !==
-    undefined &&
-    typeof payload.event ===
-      "object"
-  ) {
-    const result =
-      extractChatObject(
-        payload.event
-      );
-
-    if (result) {
-      return result;
-    }
-  }
+  if (payload.data !== undefined) return extractChatObject(payload.data);
+  if (payload.result !== undefined) return extractChatObject(payload.result);
+  if (payload.payload !== undefined) return extractChatObject(payload.payload);
 
   return null;
 }
 
-/* ============================================================
-   NORMALIZE MESSAGE
-============================================================ */
+function normalizeChatMessage(payload: any): ChatMessage | null {
+  const message = extractChatObject(payload);
+  if (!message) return null;
 
-function normalizeChatMessage(
-  payload: any
-): ChatMessage | null {
-  const message =
-    extractChatObject(payload);
-
-  if (!message) {
-    return null;
-  }
-
-  const backendId =
-    message.id ??
-    message.messageId ??
-    message.uuid ??
-    message._id;
-
+  const backendId = message.id ?? message.messageId ?? message.uuid ?? message._id;
   const clientMessageId =
     message.clientMessageId ??
     payload?.clientMessageId ??
     payload?.data?.clientMessageId ??
-    payload?.message?.clientMessageId ??
-    payload?.data?.message
-      ?.clientMessageId;
+    payload?.message?.clientMessageId;
 
-  const finalId =
-    backendId ??
-    clientMessageId ??
-    `ws-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}`;
-
-  const sender =
-    normalizeSender(
-      message.sender ??
-        message.senderType ??
-        message.from ??
-        message.direction ??
-        message.author ??
-        message.role
-    );
-
-  const type =
-    normalizeMessageType(message);
-
-  let content =
+  const finalId = backendId ?? clientMessageId ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const content =
     message.content ??
     message.text ??
+    message.message ??
     message.body ??
+    message.messagebody ??
+    message.messageBody ??
     "";
-
-  if (
-    !content &&
-    typeof message.message ===
-      "string"
-  ) {
-    content =
-      message.message;
-  }
-
-  const timestamp =
+  const time =
+    message.time ??
     message.timestamp ??
     message.createdAt ??
-    message.sentAt ??
-    message.time ??
-    new Date().toISOString();
+    message.created_at ??
+    message.receivedAt ??
+    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return {
     ...message,
-
     id: finalId,
-
-    clientMessageId,
-
-    sender,
-
-    type,
-
+    clientMessageId: clientMessageId ? String(clientMessageId) : backendId ? String(backendId) : undefined,
+    sender: normalizeSender(message.sender ?? message.from ?? message.direction),
+    type: normalizeMessageType(message),
     content,
-
-    timestamp,
-
-    time:
-      message.time ??
-      formatMessageTime(timestamp),
-
-    fileName:
-      message.fileName ??
-      message.filename ??
-      message.attachment?.fileName,
-
-    fileSize:
-      message.fileSize != null ? String(message.fileSize) : message.attachment?.fileSize != null ? String(message.attachment.fileSize) : undefined,
-
-    url:
-      message.url ??
-      message.mediaUrl ??
-      message.fileUrl ??
-      message.attachment?.url,
-
-    thumbnail:
-      message.thumbnail ??
-      message.thumbnailUrl ??
-      message.mediaThumbnail,
-
-    duration:
-      message.duration ??
-      message.audioDuration,
-
-    replyTo:
-      message.replyTo ??
-      message.replyMessage ??
-      message.quotedText,
-
-    status:
-      message.status ??
-      "sent",
+    replyTo: message.replyTo ?? message.reply_to,
+    fileName: message.fileName ?? message.filename ?? message.file_name,
+    fileSize: message.fileSize ?? message.filesize ?? message.file_size,
+    thumbnail: message.thumbnail ?? message.thumbnailUrl ?? message.thumbnail_url,
+    duration: message.duration,
+    time,
+    timestamp: message.timestamp ?? message.createdAt ?? message.created_at ?? new Date().toISOString(),
+    url: message.url ?? message.filePath ?? message.file_path ?? message.mediaUrl,
+    status: message.status ?? "sent",
   };
 }
 
-/* ============================================================
-   TIME
-============================================================ */
+function mergeChatMessages(existingList: ChatMessage[], incomingList: ChatMessage[]): ChatMessage[] {
+  if (!incomingList || incomingList.length === 0) return existingList;
+  if (!existingList || existingList.length === 0) return incomingList;
 
-function formatMessageTime(
-  timestamp: any
-): string {
-  if (!timestamp) {
-    return "";
-  }
+  const merged = [...existingList];
 
-  try {
-    return new Date(
-      timestamp
-    ).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
+  incomingList.forEach((incoming) => {
+    const existingIndex = merged.findIndex((item) => {
+      if (item.id === incoming.id) return true;
+      if (item.clientMessageId && incoming.clientMessageId && item.clientMessageId === incoming.clientMessageId) return true;
+      return false;
     });
-  } catch {
-    return String(timestamp);
-  }
-}
 
-/* ============================================================
-   MESSAGE KEY
-============================================================ */
-
-function getMessageKey(
-  message: ChatMessage
-): string {
-  const id =
-    message.id ??
-    message.messageId ??
-    message.uuid ??
-    message._id;
-
-  if (
-    id !== undefined &&
-    id !== null &&
-    id !== ""
-  ) {
-    return String(id);
-  }
-
-  if (
-    message.clientMessageId
-  ) {
-    return `client:${message.clientMessageId}`;
-  }
-
-  return [
-    normalizeSender(
-      message.sender
-    ),
-    message.type ??
-      "text",
-    message.content ??
-      "",
-    message.timestamp ??
-      "",
-  ].join("|");
-}
-
-/* ============================================================
-   FIND SAME MESSAGE
-============================================================ */
-
-function isSameMessage(
-  a: ChatMessage,
-  b: ChatMessage
-): boolean {
-  const aId =
-    a.id ??
-    a.messageId ??
-    a.uuid ??
-    a._id;
-
-  const bId =
-    b.id ??
-    b.messageId ??
-    b.uuid ??
-    b._id;
-
-  if (
-    aId !== undefined &&
-    aId !== null &&
-    bId !== undefined &&
-    bId !== null &&
-    String(aId) === String(bId)
-  ) {
-    return true;
-  }
-
-  if (
-    a.clientMessageId &&
-    b.clientMessageId &&
-    a.clientMessageId ===
-      b.clientMessageId
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-/* ============================================================
-   MERGE MESSAGES
-============================================================ */
-
-function mergeChatMessages(
-  current: ChatMessage[],
-  incoming: ChatMessage[]
-): ChatMessage[] {
-  const result = [
-    ...current,
-  ];
-
-  for (
-    const newMessage of incoming
-  ) {
-    const existingIndex =
-      result.findIndex(
-        (oldMessage) =>
-          isSameMessage(
-            oldMessage,
-            newMessage
-          )
-      );
-
-    if (
-      existingIndex !== -1
-    ) {
-      result[
-        existingIndex
-      ] = {
-        ...result[
-          existingIndex
-        ],
-        ...newMessage,
-
-        clientMessageId:
-          newMessage.clientMessageId ??
-          result[
-            existingIndex
-          ].clientMessageId,
-
-        status:
-          newMessage.status ??
-          "sent",
-      };
+    if (existingIndex !== -1) {
+      merged[existingIndex] = { ...merged[existingIndex], ...incoming };
     } else {
-      result.push(
-        newMessage
-      );
+      merged.push(incoming);
     }
-  }
+  });
 
-  return result;
+  return merged;
 }
 
 /* ============================================================
-   FILE SIZE
+   MAIN COMPONENT
 ============================================================ */
 
-function formatFileSize(
-  bytes: number
-): string {
-  if (!bytes) {
-    return "0 Bytes";
-  }
+export const Section3ChatTimeline: React.FC<Section3ChatTimelineProps> = ({
+  chatMessages: externalChatMessages = [],
+  chatContainerRef: externalChatContainerRef,
+  showEmojiPicker: externalShowEmojiPicker,
+  setShowEmojiPicker: externalSetShowEmojiPicker,
+  quickEmojis = DEFAULT_QUICK_EMOJIS,
+  insertEmoji: externalInsertEmoji,
+  showAttachMenu: externalShowAttachMenu,
+  setShowAttachMenu: externalSetShowAttachMenu,
+  fileInputRef: externalFileInputRef,
+  handleFileSelected: externalHandleFileSelected,
+  handleSendAttachment: externalHandleSendAttachment,
+  chatPreviewFile: externalChatPreviewFile,
+  setChatPreviewFile: externalSetChatPreviewFile,
+  isRecording: externalIsRecording = false,
+  recordingTime: externalRecordingTime = 0,
+  toggleRecording: externalToggleRecording,
+  chatInput: externalChatInput = "",
+  setChatInput: externalSetChatInput,
+  handleSendChatMessage: externalHandleSendChatMessage,
+  socketTopic = DEFAULT_SOCKET_TOPICS,
+  chatSendDestination = DEFAULT_CHAT_SEND_DESTINATION,
+  conversationId,
+  customerId,
+  onSocketMessage,
+}) => {
+  /* ================= REFS & STATES ================= */
+  const internalChatContainerRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = externalChatContainerRef ?? internalChatContainerRef;
 
-  const units = [
-    "Bytes",
-    "KB",
-    "MB",
-    "GB",
-  ];
+  const internalFileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = externalFileInputRef ?? internalFileInputRef;
 
-  const index = Math.min(
-    Math.floor(
-      Math.log(bytes) /
-        Math.log(1024)
-    ),
-    units.length - 1
+  const stompClientRef = useRef<Client | null>(null);
+  const subscriptionsRef = useRef<StompSubscription[]>([]);
+
+  const [localFetchedMessages, setLocalFetchedMessages] = useState<ChatMessage[]>([]);
+  const [internalChatMessages, setInternalChatMessages] = useState<ChatMessage[]>([]);
+  const [internalShowEmojiPicker, setInternalShowEmojiPicker] = useState(false);
+  const [internalShowAttachMenu, setInternalShowAttachMenu] = useState(false);
+  const [internalChatInput, setInternalChatInput] = useState("");
+  const [internalChatPreviewFile, setInternalChatPreviewFile] = useState<ChatPreviewFile | null>(null);
+  const [internalIsRecording, setInternalIsRecording] = useState(false);
+  const [internalRecordingTime, setInternalRecordingTime] = useState<number>(externalRecordingTime || 0);
+
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketError, setSocketError] = useState<string | null>(null);
+
+  const showEmojiPicker = externalShowEmojiPicker ?? internalShowEmojiPicker;
+  const setShowEmojiPicker = externalSetShowEmojiPicker ?? setInternalShowEmojiPicker;
+
+  const showAttachMenu = externalShowAttachMenu ?? internalShowAttachMenu;
+  const setShowAttachMenu = externalSetShowAttachMenu ?? setInternalShowAttachMenu;
+
+  const chatInput = externalChatInput ?? internalChatInput;
+  const setChatInput = externalSetChatInput ?? setInternalChatInput;
+
+  const chatPreviewFile = externalChatPreviewFile ?? internalChatPreviewFile;
+  const setChatPreviewFile = externalSetChatPreviewFile ?? setInternalChatPreviewFile;
+
+  const isRecording = externalIsRecording || internalIsRecording;
+  const recordingTime = externalRecordingTime || internalRecordingTime;
+
+  /* ================= FETCH MESSAGES FOR LOCAL STATE ================= */
+  useEffect(() => {
+    if (!conversationId) return;
+
+    async function fetchLocalMessages() {
+      try {
+        const url = `${API_BASE_URL}/api/conversation/byphonenumber/${conversationId}`;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { Accept: "application/json", "ngrok-skip-browser-warning": "1" },
+          cache: "no-store",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const rawList = Array.isArray(data) ? data : data?.messages ?? data?.body ?? data?.data ?? [];
+          if (Array.isArray(rawList)) {
+            const formatted = rawList.map(normalizeChatMessage).filter(Boolean) as ChatMessage[];
+            setLocalFetchedMessages(formatted);
+          }
+        }
+      } catch (err) {
+        console.error("Local timeline message fetch failed:", err);
+      }
+    }
+
+    fetchLocalMessages();
+  }, [conversationId]);
+
+  /* ================= MERGE DISPLAY MESSAGES ================= */
+  const displayMessages = useMemo(() => {
+    let combined = mergeChatMessages(localFetchedMessages, externalChatMessages);
+    combined = mergeChatMessages(combined, internalChatMessages);
+    return combined;
+  }, [localFetchedMessages, externalChatMessages, internalChatMessages]);
+
+  /* ================= SCROLL TO BOTTOM ================= */
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatContainerRef]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [displayMessages.length, scrollToBottom]);
+
+  /* ================= STOMP WEBSOCKET CLIENT ================= */
+  const handleWebSocketMessage = useCallback(
+    (rawMessage: any) => {
+      const normalized = normalizeChatMessage(rawMessage);
+      if (!normalized) return;
+
+      setInternalChatMessages((prev) => mergeChatMessages(prev, [normalized]));
+      if (onSocketMessage) onSocketMessage(rawMessage);
+    },
+    [onSocketMessage]
   );
 
-  const size =
-    bytes /
-    Math.pow(1024, index);
-
-  return `${size.toFixed(
-    index === 0 ? 0 : 2
-  )} ${units[index]}`;
-}
-
-/* ============================================================
-   COMPONENT
-============================================================ */
-
-export const Section3ChatTimeline =
-  ({
-    chatMessages:
-      externalChatMessages = [],
-
-    chatContainerRef:
-      externalChatContainerRef,
-
-    showEmojiPicker:
-      externalShowEmojiPicker,
-
-    setShowEmojiPicker:
-      externalSetShowEmojiPicker,
-
-    quickEmojis =
-      DEFAULT_QUICK_EMOJIS,
-
-    insertEmoji:
-      externalInsertEmoji,
-
-    showAttachMenu:
-      externalShowAttachMenu,
-
-    setShowAttachMenu:
-      externalSetShowAttachMenu,
-
-    fileInputRef:
-      externalFileInputRef,
-
-    handleFileSelected:
-      externalHandleFileSelected,
-
-    handleSendAttachment:
-      externalHandleSendAttachment,
-
-    chatPreviewFile:
-      externalChatPreviewFile,
-
-    setChatPreviewFile:
-      externalSetChatPreviewFile,
-
-    isRecording:
-      externalIsRecording = false,
-
-    recordingTime:
-      externalRecordingTime = 0,
-
-    toggleRecording:
-      externalToggleRecording,
-
-    chatInput:
-      externalChatInput = "",
-
-    setChatInput:
-      externalSetChatInput,
-
-    handleSendChatMessage:
-      externalHandleSendChatMessage,
-
-    socketTopic =
-      DEFAULT_SOCKET_TOPICS,
-
-    chatSendDestination =
-      DEFAULT_CHAT_SEND_DESTINATION,
-
-    conversationId,
-
-    customerId,
-
-    onSocketMessage,
-  }: Section3ChatTimelineProps) => {
-
-    const internalChatContainerRef =
-      useRef<HTMLDivElement | null>(
-        null
-      );
-
-    const chatContainerRef =
-      externalChatContainerRef ??
-      internalChatContainerRef;
-
-    const internalFileInputRef =
-      useRef<HTMLInputElement | null>(
-        null
-      );
-
-    const fileInputRef =
-      externalFileInputRef ??
-      internalFileInputRef;
-
-    const stompClientRef =
-      useRef<Client | null>(null);
-
-    const subscriptionsRef =
-      useRef<
-        StompSubscription[]
-      >([]);
-
-    const isUnmountedRef =
-      useRef(false);
-
-    const previousExternalMessagesRef =
-      useRef<ChatMessage[]>([]);
-
-    const [
-      socketConnected,
-      setSocketConnected,
-    ] = useState(false);
-
-    const [
-      socketError,
-      setSocketError,
-    ] = useState<string | null>(
-      null
-    );
-
-    const normalizedExternalMessages = useMemo(() => {
-      return (externalChatMessages || [])
-        .map((msg) => normalizeChatMessage(msg))
-        .filter((msg): msg is ChatMessage => msg !== null);
-    }, [externalChatMessages]);
-
-    const [
-      internalChatMessages,
-      setInternalChatMessages,
-    ] = useState<
-      ChatMessage[]
-    >(
-      normalizedExternalMessages
-    );
-
-    const [
-      internalShowEmojiPicker,
-      setInternalShowEmojiPicker,
-    ] = useState(false);
-
-    const [
-      internalShowAttachMenu,
-      setInternalShowAttachMenu,
-    ] = useState(false);
-
-    const [
-      internalChatInput,
-      setInternalChatInput,
-    ] = useState("");
-
-    const [
-      internalChatPreviewFile,
-      setInternalChatPreviewFile,
-    ] =
-      useState<ChatPreviewFile | null>(
-        null
-      );
-
-    const [
-      internalIsRecording,
-      setInternalIsRecording,
-    ] = useState(false);
-
-    const [
-      internalRecordingTime,
-      setInternalRecordingTime,
-    ] = useState(0);
-
-    useEffect(() => {
-      if (
-        !normalizedExternalMessages
-      ) {
-        return;
-      }
-
-      setInternalChatMessages(
-        (current) =>
-          mergeChatMessages(
-            current,
-            normalizedExternalMessages
-          )
-      );
-
-      previousExternalMessagesRef.current =
-        normalizedExternalMessages;
-    }, [
-      normalizedExternalMessages,
-    ]);
-
-    const chatMessages =
-      internalChatMessages;
-
-    const showEmojiPicker =
-      externalShowEmojiPicker ??
-      internalShowEmojiPicker;
-
-    const showAttachMenu =
-      externalShowAttachMenu ??
-      internalShowAttachMenu;
-
-    const chatInput =
-      externalChatInput ??
-      internalChatInput;
-
-    const chatPreviewFile =
-      externalChatPreviewFile ??
-      internalChatPreviewFile;
-
-    const isRecording =
-      externalIsRecording ||
-      internalIsRecording;
-
-    const recordingTime =
-      externalRecordingTime ||
-      internalRecordingTime;
-
-    const setShowEmojiPicker =
-      useCallback(
-        (
-          value:
-            | boolean
-            | ((
-                previous: boolean
-              ) => boolean)
-        ) => {
-          if (
-            externalSetShowEmojiPicker
-          ) {
-            externalSetShowEmojiPicker(
-              value
-            );
-          } else {
-            setInternalShowEmojiPicker(
-              value
-            );
-          }
-        },
-        [
-          externalSetShowEmojiPicker,
-        ]
-      );
-
-    const setShowAttachMenu =
-      useCallback(
-        (
-          value:
-            | boolean
-            | ((
-                previous: boolean
-              ) => boolean)
-        ) => {
-          if (
-            externalSetShowAttachMenu
-          ) {
-            externalSetShowAttachMenu(
-              value
-            );
-          } else {
-            setInternalShowAttachMenu(
-              value
-            );
-          }
-        },
-        [
-          externalSetShowAttachMenu,
-        ]
-      );
-
-    const setChatInput =
-      useCallback(
-        (
-          value:
-            | string
-            | ((
-                previous: string
-              ) => string)
-        ) => {
-          if (
-            externalSetChatInput
-          ) {
-            externalSetChatInput(
-              value
-            );
-          } else {
-            setInternalChatInput(
-              value
-            );
-          }
-        },
-        [
-          externalSetChatInput,
-        ]
-      );
-
-    const setChatPreviewFile =
-      useCallback(
-        (
-          value: any
-        ) => {
-          if (
-            externalSetChatPreviewFile
-          ) {
-            externalSetChatPreviewFile(
-              value
-            );
-          } else {
-            setInternalChatPreviewFile(
-              value
-            );
-          }
-        },
-        [
-          externalSetChatPreviewFile,
-        ]
-      );
-
-    const addLocalChatMessage =
-      useCallback(
-        (
-          message: ChatMessage
-        ) => {
-          setInternalChatMessages(
-            (previous) => {
-              const exists =
-                previous.some(
-                  (existing) =>
-                    isSameMessage(
-                      existing,
-                      message
-                    )
-                );
-
-              if (exists) {
-                return previous;
-              }
-
-              return [
-                ...previous,
-                message,
-              ];
-            }
-          );
-        },
-        []
-      );
-
-    const handleWebSocketMessage =
-      useCallback(
-        (rawData: any) => {
-          if (!rawData) {
-            return;
-          }
-
-          onSocketMessage?.(
-            rawData
-          );
-
-          const incomingMessage =
-            normalizeChatMessage(
-              rawData
-            );
-
-          if (
-            !incomingMessage
-          ) {
-            return;
-          }
-
-          setInternalChatMessages(
-            (previousMessages) => {
-              const existingIndex =
-                previousMessages.findIndex(
-                  (message) =>
-                    isSameMessage(
-                      message,
-                      incomingMessage
-                    )
-                );
-
-              if (
-                existingIndex !==
-                -1
-              ) {
-                return previousMessages.map(
-                  (
-                    message,
-                    index
-                  ) => {
-                    if (
-                      index !==
-                      existingIndex
-                    ) {
-                      return message;
-                    }
-
-                    return {
-                      ...message,
-
-                      ...incomingMessage,
-
-                      clientMessageId:
-                        incomingMessage.clientMessageId ??
-                        message.clientMessageId,
-
-                      status:
-                        incomingMessage.status ??
-                        "sent",
-                    };
-                  }
-                );
-              }
-
-              return [
-                ...previousMessages,
-                incomingMessage,
-              ];
-            }
-          );
-        },
-        [onSocketMessage]
-      );
-
-    const socketTopics =
-      useMemo(() => {
-        if (
-          Array.isArray(
-            socketTopic
-          )
-        ) {
-          return socketTopic.filter(
-            Boolean
-          );
-        }
-
-        if (
-          socketTopic
-        ) {
-          return [
-            socketTopic,
-          ];
-        }
-
-        return [DEFAULT_SOCKET_TOPICS];
-      }, [socketTopic]);
-
-    const connectWebSocket =
-      useCallback(() => {
-        if (
-          isUnmountedRef.current
-        ) {
-          return;
-        }
-
-        const existingClient =
-          stompClientRef.current;
-
-        if (
-          existingClient?.active ||
-          existingClient?.connected
-        ) {
-          return;
-        }
-
+  useEffect(() => {
+    const topics = Array.isArray(socketTopic) ? socketTopic : [socketTopic];
+    const cleanTopics = topics.filter(Boolean);
+    if (cleanTopics.length === 0) return;
+
+    const brokerURL = WS_API_BASE_URL.startsWith("ws")
+      ? `${WS_API_BASE_URL}${WS_ENDPOINT}`
+      : `wss://${WS_API_BASE_URL}${WS_ENDPOINT}`;
+
+    const client = new Client({
+      brokerURL,
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      debug: (msg: string) => {
+        if (process.env.NODE_ENV === "development") console.log("[STOMP]", msg);
+      },
+      onConnect: () => {
+        setSocketConnected(true);
         setSocketError(null);
 
-        const brokerURL =
-          `${WS_API_BASE_URL}${WS_ENDPOINT}`;
+        subscriptionsRef.current.forEach((sub) => {
+          try { sub.unsubscribe(); } catch {}
+        });
+        subscriptionsRef.current = [];
 
-        const client =
-          new Client({
-            brokerURL,
-
-            reconnectDelay: 5000,
-
-            heartbeatIncoming: 10000,
-
-            heartbeatOutgoing: 10000,
-
-            debug: (message) => {
-              if (
-                process.env
-                  .NODE_ENV ===
-                "development"
-              ) {
-                console.log(
-                  "[STOMP]",
-                  message
-                );
-              }
-            },
-
-            onConnect: () => {
-              setSocketConnected(
-                true
-              );
-
-              setSocketError(
-                null
-              );
-
-              subscriptionsRef.current.forEach(
-                (
-                  subscription
-                ) => {
-                  try {
-                    subscription.unsubscribe();
-                  } catch {}
-                }
-              );
-
-              subscriptionsRef.current =
-                [];
-
-              if (Array.isArray(socketTopics)) {
-                socketTopics.forEach(
-                  (topic) => {
-                    if (!topic) {
-                      return;
-                    }
-
-                    try {
-                      const subscription =
-                        client.subscribe(
-                          topic,
-                          (
-                            message: IMessage
-                          ) => {
-                            try {
-                              const data =
-                                parseSocketBody(
-                                  message
-                                );
-
-                              handleWebSocketMessage(
-                                data
-                              );
-                            } catch (
-                              error
-                            ) {
-                              console.error(
-                                "SOCKET MESSAGE HANDLING ERROR:",
-                                error
-                              );
-                            }
-                          }
-                        );
-
-                      subscriptionsRef.current.push(
-                        subscription
-                      );
-                    } catch (
-                      error
-                    ) {
-                      console.error(
-                        `FAILED TO SUBSCRIBE TO ${topic}:`,
-                        error
-                      );
-                    }
-                  }
-                );
-              }
-            },
-
-            onDisconnect:
-              () => {
-                setSocketConnected(
-                  false
-                );
-              },
-
-            onStompError:
-              (frame) => {
-                setSocketConnected(
-                  false
-                );
-
-                setSocketError(
-                  frame.headers
-                    ?.message ||
-                    "WebSocket STOMP error"
-                );
-              },
-
-            onWebSocketError:
-              () => {
-                setSocketConnected(
-                  false
-                );
-
-                setSocketError(
-                  "WebSocket connection error"
-                );
-              },
-          });
-
-        stompClientRef.current =
-          client;
-
-        client.activate();
-      }, [
-        handleWebSocketMessage,
-        socketTopics,
-      ]);
-
-    const disconnectWebSocket =
-      useCallback(
-        async () => {
-          subscriptionsRef.current.forEach(
-            (
-              subscription
-            ) => {
-              try {
-                subscription.unsubscribe();
-              } catch {}
-            }
-          );
-
-          subscriptionsRef.current =
-            [];
-
-          const client =
-            stompClientRef.current;
-
-          stompClientRef.current =
-            null;
-
-          if (client) {
-            try {
-              await client.deactivate();
-            } catch (
-              error
-            ) {
-              console.error(
-                "WebSocket disconnect error:",
-                error
-              );
-            }
-          }
-
-          setSocketConnected(
-            false
-          );
-        },
-        []
-      );
-
-    useEffect(() => {
-      isUnmountedRef.current =
-        false;
-
-      connectWebSocket();
-
-      return () => {
-        isUnmountedRef.current =
-          true;
-
-        disconnectWebSocket();
-      };
-    }, [
-      connectWebSocket,
-      disconnectWebSocket,
-    ]);
-
-    useEffect(() => {
-      const container =
-        chatContainerRef.current;
-
-      if (!container) {
-        return;
-      }
-
-      requestAnimationFrame(
-        () => {
-          container.scrollTop =
-            container.scrollHeight;
-        }
-      );
-    }, [
-      chatMessages.length,
-      chatContainerRef,
-    ]);
-
-    const insertEmoji =
-      useCallback(
-        (emoji: string) => {
-          if (
-            externalInsertEmoji
-          ) {
-            externalInsertEmoji(
-              emoji
-            );
-
-            return;
-          }
-
-          setChatInput(
-            (previous) =>
-              `${previous}${emoji}`
-          );
-        },
-        [
-          externalInsertEmoji,
-          setChatInput,
-        ]
-      );
-
-    const handleFileSelected =
-      useCallback(
-        (
-          event: React.ChangeEvent<HTMLInputElement>
-        ) => {
-          if (
-            externalHandleFileSelected
-          ) {
-            externalHandleFileSelected(
-              event
-            );
-
-            return;
-          }
-
-          const file =
-            event.target.files?.[0];
-
-          if (!file) {
-            return;
-          }
-
-          const mime =
-            file.type || "";
-
-          let type:
-            | "image"
-            | "video"
-            | "audio"
-            | "file" =
-            "file";
-
-          if (
-            mime.startsWith(
-              "image/"
-            )
-          ) {
-            type = "image";
-          } else if (
-            mime.startsWith(
-              "video/"
-            )
-          ) {
-            type = "video";
-          } else if (
-            mime.startsWith(
-              "audio/"
-            )
-          ) {
-            type = "audio";
-          }
-
-          let thumbnail:
-            | string
-            | undefined;
-
-          if (
-            type === "image"
-          ) {
-            thumbnail =
-              URL.createObjectURL(
-                file
-              );
-          }
-
-          setChatPreviewFile({
-            type,
-            fileName:
-              file.name,
-            fileSize:
-              formatFileSize(
-                file.size
-              ),
-            file,
-            thumbnail,
-          });
-
-          setShowAttachMenu(
-            false
-          );
-        },
-        [
-          externalHandleFileSelected,
-          setChatPreviewFile,
-          setShowAttachMenu,
-        ]
-      );
-
-    const handleSendAttachment =
-      useCallback(
-        (type: string) => {
-          if (
-            externalHandleSendAttachment
-          ) {
-            externalHandleSendAttachment(
-              type
-            );
-
-            return;
-          }
-
-          const input =
-            fileInputRef.current;
-
-          if (!input) {
-            return;
-          }
-
-          const acceptMap: Record<
-            string,
-            string
-          > = {
-            Image: "image/*",
-
-            Document:
-              ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv",
-
-            Video: "video/*",
-
-            Audio: "audio/*",
-          };
-
-          input.accept =
-            acceptMap[type] ||
-            "*/*";
-
-          input.value = "";
-
-          input.click();
-
-          setShowAttachMenu(
-            false
-          );
-        },
-        [
-          externalHandleSendAttachment,
-          fileInputRef,
-          setShowAttachMenu,
-        ]
-      );
-
-    const sendThroughSocket =
-      useCallback(
-        (payload: any) => {
-          const client =
-            stompClientRef.current;
-
-          if (
-            !client ||
-            !client.connected
-          ) {
-            return false;
-          }
-
+        cleanTopics.forEach((topic) => {
           try {
-            client.publish({
-              destination:
-                chatSendDestination,
-
-              body: JSON.stringify(
-                payload
-              ),
+            const sub = client.subscribe(topic, (msg: IMessage) => {
+              const body = parseSocketBody(msg);
+              handleWebSocketMessage(body);
             });
-
-            return true;
-          } catch {
-            return false;
+            subscriptionsRef.current.push(sub);
+          } catch (e) {
+            console.error("STOMP subscription failed:", topic, e);
           }
-        },
-        [
-          chatSendDestination,
-        ]
-      );
+        });
+      },
+      onDisconnect: () => setSocketConnected(false),
+      onStompError: (frame: IFrame) => {
+        console.error("STOMP error:", frame);
+        setSocketConnected(false);
+        setSocketError(frame.headers?.message || "STOMP connection error");
+      },
+      onWebSocketError: (event) => {
+        console.error("WebSocket error:", event);
+        setSocketConnected(false);
+      },
+    });
 
-    const handleSendChatMessage =
-      useCallback(() => {
-        if (
-          externalHandleSendChatMessage
-        ) {
-          externalHandleSendChatMessage();
+    client.activate();
+    stompClientRef.current = client;
 
-          return;
-        }
+    return () => {
+      subscriptionsRef.current.forEach((sub) => {
+        try { sub.unsubscribe(); } catch {}
+      });
+      client.deactivate();
+    };
+  }, [socketTopic, handleWebSocketMessage]);
 
-        const text =
-          chatInput.trim();
+  /* ================= MESSAGE ACTIONS ================= */
+  const handleInsertEmoji = (emoji: string) => {
+    if (externalInsertEmoji) {
+      externalInsertEmoji(emoji);
+    } else {
+      setChatInput((prev) => prev + emoji);
+    }
+  };
 
-        if (
-          !text &&
-          !chatPreviewFile
-        ) {
-          return;
-        }
+  const handleSend = () => {
+    if (externalHandleSendChatMessage) {
+      externalHandleSendChatMessage();
+      return;
+    }
 
-        if (text) {
-          const clientMessageId =
-            `client-${Date.now()}-${Math.random()
-              .toString(36)
-              .slice(2)}`;
+    if (!chatInput.trim() && !chatPreviewFile) return;
 
-          const timestamp =
-            new Date().toISOString();
+    const newMsg: ChatMessage = {
+      id: `client-${Date.now()}`,
+      sender: "agent",
+      type: chatPreviewFile ? chatPreviewFile.type : "text",
+      content: chatInput,
+      url: chatPreviewFile?.url || (chatPreviewFile?.file ? URL.createObjectURL(chatPreviewFile.file) : undefined),
+      fileName: chatPreviewFile?.fileName,
+      fileSize: chatPreviewFile?.fileSize,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date().toISOString(),
+      status: "sent",
+    };
 
-          const optimisticMessage: ChatMessage =
-            {
-              id: clientMessageId,
+    setInternalChatMessages((prev) => [...prev, newMsg]);
 
-              clientMessageId,
-
-              sender:
-                "agent",
-
-              type:
-                "text",
-
-              content:
-                text,
-
-              timestamp,
-
-              time:
-                formatMessageTime(
-                  timestamp
-                ),
-
-              status:
-                "sending",
-            };
-
-          addLocalChatMessage(
-            optimisticMessage
-          );
-
-          const payload = {
-            action:
-              "SEND_MESSAGE",
-
-            type:
-              "MESSAGE",
-
-            conversationId,
-
-            customerId,
-
-            clientMessageId,
-
-            message: {
-              type:
-                "text",
-
-              content:
-                text,
-
-              sender:
-                "agent",
-
-              clientMessageId,
-            },
-
-            content:
-              text,
-
-            sender:
-              "agent",
-
-            timestamp,
-          };
-
-          const sent =
-            sendThroughSocket(
-              payload
-            );
-
-          if (!sent) {
-            setInternalChatMessages(
-              (previous) =>
-                previous.map(
-                  (message) =>
-                    message.clientMessageId ===
-                    clientMessageId
-                      ? {
-                          ...message,
-                          status:
-                            "failed",
-                        }
-                      : message
-                )
-            );
-
-            return;
-          }
-
-          setChatInput("");
-        }
-
-        if (
-          chatPreviewFile
-        ) {
-          const clientMessageId =
-            `client-${Date.now()}-${Math.random()
-              .toString(36)
-              .slice(2)}`;
-
-          const timestamp =
-            new Date().toISOString();
-
-          const optimisticMessage: ChatMessage =
-            {
-              id: clientMessageId,
-
-              clientMessageId,
-
-              sender:
-                "agent",
-
-              type:
-                chatPreviewFile.type,
-
-              content:
-                chatPreviewFile.content ??
-                "",
-
-              fileName:
-                chatPreviewFile.fileName,
-
-              fileSize:
-                chatPreviewFile.fileSize,
-
-              thumbnail:
-                chatPreviewFile.thumbnail,
-
-              url:
-                chatPreviewFile.url,
-
-              timestamp,
-
-              time:
-                formatMessageTime(
-                  timestamp
-                ),
-
-              status:
-                "sending",
-            };
-
-          addLocalChatMessage(
-            optimisticMessage
-          );
-
-          const payload = {
-            action:
-              "SEND_ATTACHMENT",
-
-            type:
-              "ATTACHMENT",
-
-            conversationId,
-
-            customerId,
-
-            clientMessageId,
-
-            attachment: {
-              type:
-                chatPreviewFile.type,
-
-              fileName:
-                chatPreviewFile.fileName,
-
-              fileSize:
-                chatPreviewFile.fileSize,
-
-              url:
-                chatPreviewFile.url ??
-                null,
-
-              clientMessageId,
-            },
-
-            timestamp,
-          };
-
-          const sent =
-            sendThroughSocket(
-              payload
-            );
-
-          if (!sent) {
-            setInternalChatMessages(
-              (previous) =>
-                previous.map(
-                  (message) =>
-                    message.clientMessageId ===
-                    clientMessageId
-                      ? {
-                          ...message,
-                          status:
-                            "failed",
-                        }
-                      : message
-                )
-            );
-
-            return;
-          }
-
-          setChatPreviewFile(
-            null
-          );
-        }
-      }, [
-        chatInput,
-        chatPreviewFile,
-        conversationId,
-        customerId,
-        externalHandleSendChatMessage,
-        sendThroughSocket,
-        setChatInput,
-        setChatPreviewFile,
-        addLocalChatMessage,
-      ]);
-
-    useEffect(() => {
-      if (
-        !internalIsRecording
-      ) {
-        return;
+    if (stompClientRef.current && stompClientRef.current.connected) {
+      try {
+        stompClientRef.current.publish({
+          destination: chatSendDestination,
+          body: JSON.stringify(newMsg),
+        });
+      } catch (err) {
+        console.error("STOMP publish failed:", err);
       }
+    }
 
-      const timer =
-        window.setInterval(
-          () => {
-            setInternalRecordingTime(
-              (previous) =>
-                previous + 1
-            );
-          },
-          1000
-        );
+    setChatInput("");
+    setChatPreviewFile(null);
+  };
 
-      return () => {
-        window.clearInterval(
-          timer
-        );
-      };
-    }, [
-      internalIsRecording,
-    ]);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (externalHandleFileSelected) {
+      externalHandleFileSelected(e);
+      return;
+    }
 
-    const toggleRecording =
-      useCallback(() => {
-        if (
-          externalToggleRecording
-        ) {
-          externalToggleRecording();
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-          return;
-        }
+    let type: ChatPreviewFile["type"] = "file";
+    if (file.type.startsWith("image/")) type = "image";
+    else if (file.type.startsWith("audio/")) type = "audio";
+    else if (file.type.startsWith("video/")) type = "video";
 
-        setInternalIsRecording(
-          (previous) => {
-            const next =
-              !previous;
+    setChatPreviewFile({
+      type,
+      fileName: file.name,
+      fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+      file,
+      url: URL.createObjectURL(file),
+    });
+    setShowAttachMenu(false);
+  };
 
-            if (next) {
-              setInternalRecordingTime(
-                0
-              );
-            }
+  const handleToggleRec = () => {
+    if (externalToggleRecording) {
+      externalToggleRecording();
+    } else {
+      setInternalIsRecording((prev) => !prev);
+    }
+  };
 
-            return next;
-          }
-        );
-      }, [
-        externalToggleRecording,
-      ]);
-
-    return (
-      <Card>
-        <CardContent className="p-4 space-y-4">
-
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-default-500 uppercase tracking-wide">
-                Section 3: Conversation Timeline
-              </div>
-
-              <div className="flex items-center gap-1.5 mt-1">
-                <span
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    socketConnected
-                      ? "bg-emerald-500"
-                      : "bg-red-500"
-                  )}
-                />
-                <span className="text-[10px] text-default-500">
-                  {socketConnected
-                    ? "Connected"
-                    : "Disconnected"}
-                </span>
-              </div>
+  return (
+    <Card className="shadow-sm border border-default-200 bg-background">
+      <CardContent className="p-4 space-y-3">
+        {/* CARD HEADER */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-default-600">
+              SECTION 3: CONVERSATION TIMELINE
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <span className={cn("w-2 h-2 rounded-full", socketConnected ? "bg-emerald-500" : "bg-amber-500 animate-pulse")} />
+              <span className="text-[11px] text-default-500 font-medium">
+                {socketConnected ? "Connected" : "Connecting..."}
+              </span>
             </div>
-
-            {socketError && (
-              <div className="text-[10px] text-red-500 max-w-[300px] text-right">
-                {socketError}
-              </div>
-            )}
           </div>
+          {socketError && <div className="text-[10px] text-destructive max-w-[200px] text-right">{socketError}</div>}
+        </div>
 
-          <div className="border border-default-200 rounded-lg overflow-hidden flex flex-col">
-            <div
-              ref={chatContainerRef as React.LegacyRef<HTMLDivElement>}
-              className="p-4 space-y-2 overflow-y-auto max-h-[480px] min-h-[480px] flex flex-col no-scrollbar scroll-smooth"
-            >
-              {chatMessages.length === 0 && (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center text-default-400">
-                    <Icon
-                      icon="heroicons:chat-bubble-left-right"
-                      className="w-10 h-10 mx-auto mb-2"
-                    />
-                    <div className="text-xs">
-                      No messages yet
-                    </div>
-                  </div>
+        {/* CHAT CONTAINER BOX */}
+        <div className="border border-default-200 rounded-lg overflow-hidden flex flex-col bg-background">
+          {/* MESSAGES SCROLL AREA */}
+          <div
+            ref={chatContainerRef as any}
+            className="p-4 space-y-3 overflow-y-auto max-h-[480px] min-h-[480px] flex flex-col no-scrollbar scroll-smooth bg-default-50/30"
+          >
+            {displayMessages.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center py-16">
+                <div className="text-center text-default-400 space-y-2">
+                  <Icon icon="heroicons:chat-bubble-left-right" className="w-10 h-10 mx-auto opacity-40" />
+                  <div className="text-xs font-medium">No messages yet</div>
                 </div>
-              )}
+              </div>
+            ) : (
+              displayMessages.map((msg, index) => {
+                const isCustomer = normalizeSender(msg) === "customer";
+                const messageText = msg.content ?? msg.text ?? msg.messagebody ?? msg.messageBody ?? msg.message ?? "";
+                const mediaUrl = msg.url ?? msg.thumbnail ?? msg.filePath ?? msg.file_path;
 
-              {chatMessages.map(
-                (
-                  rawMsg: any,
-                  index: number
-                ) => {
-                  const msg = normalizeChatMessage(rawMsg) || rawMsg;
-                  const isCustomer =
-                    normalizeSender(
-                      msg.sender
-                    ) ===
-                    "customer";
-
-                  return (
+                return (
+                  <div key={msg.id || index} className={cn("flex w-full", isCustomer ? "justify-start" : "justify-end")}>
                     <div
-                      key={getMessageKey(
-                        msg
-                      ) || index}
                       className={cn(
-                        "flex w-full",
+                        "max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-xs text-xs space-y-1.5",
                         isCustomer
-                          ? "justify-start"
-                          : "justify-end"
+                          ? "bg-default-100 dark:bg-default-800 text-default-800 dark:text-default-100 rounded-tl-xs"
+                          : "bg-emerald-500 text-white rounded-tr-xs"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "max-w-[72%] rounded-2xl px-3 py-2 shadow-sm text-xs",
-                          isCustomer
-                            ? "bg-default-100 text-default-800 rounded-tl-sm"
-                            : "bg-emerald-500 text-white rounded-tr-sm"
-                        )}
-                      >
-                        {msg.type ===
-                          "text" && (
-                          <div className="leading-relaxed whitespace-pre-wrap break-words">
-                            {
-                              msg.content
-                            }
-                          </div>
-                        )}
+                      {/* TEXT CONTENT */}
+                      {messageText && (
+                        <div className="leading-relaxed whitespace-pre-wrap break-words font-normal">
+                          {messageText}
+                        </div>
+                      )}
 
-                        {msg.type ===
-                          "reply" && (
-                          <div className="space-y-1.5">
-                            {msg.replyTo && (
-                              <div
-                                className={cn(
-                                  "border-l-4 p-1.5 rounded text-[10px] italic",
-                                  isCustomer
-                                    ? "border-emerald-500 bg-default-200/60 text-default-600"
-                                    : "border-white/50 bg-white/10 text-white/80"
-                                )}
-                              >
-                                {
-                                  msg.replyTo
-                                }
-                              </div>
-                            )}
-
-                            <div className="leading-relaxed whitespace-pre-wrap">
-                              {
-                                msg.content
-                              }
-                            </div>
-                          </div>
-                        )}
-
-                        {msg.type ===
-                          "file" && (
-                          <div
-                            className={cn(
-                              "flex items-center gap-3 p-2 rounded-lg",
-                              isCustomer
-                                ? "bg-default-200/60"
-                                : "bg-white/10"
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                "p-2 rounded flex items-center justify-center",
-                                isCustomer
-                                  ? "bg-emerald-500 text-white"
-                                  : "bg-white/20 text-white"
-                              )}
-                            >
-                              <Icon
-                                icon="heroicons:document-text"
-                                className="w-5 h-5"
-                              />
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold truncate">
-                                {
-                                  msg.fileName
-                                }
-                              </div>
-
-                              <div
-                                className={cn(
-                                  "text-[10px]",
-                                  isCustomer
-                                    ? "text-default-500"
-                                    : "text-white/70"
-                                )}
-                              >
-                                {
-                                  msg.fileSize
-                                }
-                              </div>
-                            </div>
-
-                            {msg.url && (
-                              <a
-                                href={
-                                  msg.url
-                                }
-                                target="_blank"
-                                rel="noreferrer"
-                                className={cn(
-                                  "h-7 w-7 rounded-full flex items-center justify-center shrink-0",
-                                  isCustomer
-                                    ? "bg-background border border-default-200"
-                                    : "bg-white/20"
-                                )}
-                              >
-                                <Icon
-                                  icon="heroicons:arrow-down-tray"
-                                  className={cn(
-                                    "w-3.5 h-3.5",
-                                    isCustomer
-                                      ? "text-default-800"
-                                      : "text-white"
-                                  )}
-                                />
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {msg.type ===
-                          "image" && (
-                          <div className="space-y-1.5">
-                            {msg.thumbnail && (
-                              <div className="rounded-xl overflow-hidden max-w-[200px]">
-                                <img
-                                  src={
-                                    msg.thumbnail
-                                  }
-                                  alt={
-                                    msg.content ||
-                                    "Image"
-                                  }
-                                  className="w-full h-auto object-cover max-h-[140px]"
-                                />
-                              </div>
-                            )}
-
-                            {msg.content && (
-                              <div
-                                className={cn(
-                                  "text-[11px] font-medium",
-                                  isCustomer
-                                    ? "text-default-700"
-                                    : "text-white/90"
-                                )}
-                              >
-                                {
-                                  msg.content
-                                }
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {msg.type ===
-                          "video" && (
-                          <div className="space-y-2">
-                            {msg.url && (
-                              <video
-                                src={
-                                  msg.url
-                                }
-                                controls
-                                className="max-w-[220px] rounded-lg"
-                              />
-                            )}
-
-                            {msg.content && (
-                              <div className="text-[11px]">
-                                {
-                                  msg.content
-                                }
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {msg.type ===
-                          "audio" && (
-                          <div className="flex items-center gap-2 min-w-[180px]">
-                            {msg.url ? (
-                              <audio
-                                controls
-                                src={
-                                  msg.url
-                                }
-                                className="max-w-[220px]"
-                              />
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  className={cn(
-                                    "h-7 w-7 rounded-full shrink-0 flex items-center justify-center",
-                                    isCustomer
-                                      ? "bg-emerald-500 text-white"
-                                      : "bg-white/20 text-white"
-                                  )}
-                                >
-                                  <Icon
-                                    icon="heroicons:play-solid"
-                                    className="w-3 h-3"
-                                  />
-                                </button>
-
-                                <div className="flex-1 h-1 bg-white/30 rounded-full">
-                                  <div
-                                    className={cn(
-                                      "h-full w-1/3 rounded-full",
-                                      isCustomer
-                                        ? "bg-emerald-500"
-                                        : "bg-white"
-                                    )}
-                                  />
-                                </div>
-
-                                <span className="text-[10px]">
-                                  {
-                                    msg.duration
-                                  }
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        <div
-                          className={cn(
-                            "flex items-center justify-end gap-1 mt-1 text-[9px] select-none",
-                            isCustomer
-                              ? "text-default-400"
-                              : "text-white/70"
+                      {/* MEDIA CONTENT */}
+                      {mediaUrl && (
+                        <div className="mt-1 space-y-1">
+                          {msg.type === "image" && (
+                            <img src={mediaUrl} alt={msg.fileName || "Image"} className="max-w-[240px] rounded-lg object-cover" />
                           )}
-                        >
-                          <span>
-                            {msg.time}
-                          </span>
-
-                          {!isCustomer && (
-                            <>
-                              {msg.status ===
-                              "sending" ? (
-                                <Icon
-                                  icon="heroicons:clock"
-                                  className="w-3.5 h-3.5 text-white/70"
-                                />
-                              ) : msg.status ===
-                                "failed" ? (
-                                <Icon
-                                  icon="heroicons:exclamation-circle"
-                                  className="w-3.5 h-3.5 text-red-200"
-                                />
-                              ) : (
-                                <Icon
-                                  icon="heroicons:check-20-solid"
-                                  className="w-3.5 h-3.5 text-white/90"
-                                />
-                              )}
-                            </>
+                          {msg.type === "video" && (
+                            <video src={mediaUrl} controls className="max-w-[240px] rounded-lg" />
+                          )}
+                          {msg.type === "audio" && (
+                            <audio src={mediaUrl} controls className="max-w-[240px]" />
+                          )}
+                          {msg.type === "file" && (
+                            <a href={mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline font-medium text-xs">
+                              <Icon icon="heroicons:document-text" className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{msg.fileName || "Download attachment"}</span>
+                            </a>
                           )}
                         </div>
+                      )}
+
+                      {/* TIMESTAMP */}
+                      <div className={cn("text-[9px] text-right opacity-75 mt-1 font-sans", isCustomer ? "text-default-500" : "text-white/80")}>
+                        {msg.time || "Just now"}
                       </div>
                     </div>
-                  );
-                }
-              )}
-            </div>
-
-            {showEmojiPicker && (
-              <div className="px-4 py-3 bg-default-50 border-t border-default-200 flex flex-wrap gap-2">
-                {quickEmojis.map(
-                  (emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() =>
-                        insertEmoji(
-                          emoji
-                        )
-                      }
-                      className="text-xl hover:scale-125 transition-transform"
-                    >
-                      {emoji}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-
-            {showAttachMenu && (
-              <div className="px-4 py-2 bg-default-50 border-t border-default-200 flex gap-3 relative">
-                <input
-                  type="file"
-                  ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
-                  className="hidden"
-                  onChange={
-                    handleFileSelected
-                  }
-                />
-
-                {[
-                  {
-                    icon: "heroicons:photo",
-                    label: "Image",
-                    color:
-                      "text-violet-500",
-                  },
-                  {
-                    icon: "heroicons:document-text",
-                    label: "Document",
-                    color:
-                      "text-blue-500",
-                  },
-                  {
-                    icon: "heroicons:film",
-                    label: "Video",
-                    color:
-                      "text-rose-500",
-                  },
-                  {
-                    icon: "heroicons:microphone",
-                    label: "Audio",
-                    color:
-                      "text-amber-500",
-                  },
-                ].map(
-                  ({
-                    icon,
-                    label,
-                    color,
-                  }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() =>
-                        handleSendAttachment(
-                          label
-                        )
-                      }
-                      className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg hover:bg-default-200 transition-colors"
-                    >
-                      <span
-                        className={`${color} flex items-center justify-center w-9 h-9 rounded-full bg-default-200`}
-                      >
-                        <Icon
-                          icon={icon}
-                          width={20}
-                          height={20}
-                        />
-                      </span>
-
-                      <span className="text-[10px] text-default-600">
-                        {label}
-                      </span>
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-
-            {chatPreviewFile && (
-              <div className="px-4 py-3 bg-default-50 border-t border-default-200 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {chatPreviewFile.type ===
-                    "image" &&
-                  chatPreviewFile.thumbnail ? (
-                    <img
-                      src={
-                        chatPreviewFile.thumbnail
-                      }
-                      alt="preview"
-                      className="w-12 h-12 object-cover rounded-md"
-                    />
-                  ) : (
-                    <div className="p-3 bg-default-200 rounded-md">
-                      <Icon
-                        icon="heroicons:document"
-                        className="w-6 h-6 text-default-600"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="text-sm font-medium">
-                      {
-                        chatPreviewFile.fileName ||
-                        chatPreviewFile.content ||
-                        "Audio File"
-                      }
-                    </div>
-
-                    <div className="text-xs text-default-500">
-                      {
-                        chatPreviewFile.fileSize ||
-                        "Ready to send"
-                      }
-                    </div>
                   </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setChatPreviewFile(
-                      null
-                    )
-                  }
-                  className="p-1.5 rounded-full hover:bg-default-200 text-default-500"
-                >
-                  <Icon
-                    icon="heroicons:x-mark"
-                    className="w-5 h-5"
-                  />
-                </button>
-              </div>
+                );
+              })
             )}
-
-            <div className="px-3 py-2.5 bg-default-50 border-t border-default-200 flex items-center gap-3">
-              {!isRecording && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmojiPicker(
-                        (
-                          previous
-                        ) =>
-                          !previous
-                      );
-
-                      setShowAttachMenu(
-                        false
-                      );
-                    }}
-                    className={cn(
-                      "h-9 w-9 rounded-full shrink-0 flex items-center justify-center transition-colors",
-                      showEmojiPicker
-                        ? "bg-emerald-100 text-emerald-600"
-                        : "text-default-500 hover:text-default-700 hover:bg-default-200"
-                    )}
-                  >
-                    <Icon
-                      icon="heroicons:face-smile"
-                      width={22}
-                      height={22}
-                    />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAttachMenu(
-                        (
-                          previous
-                        ) =>
-                          !previous
-                      );
-
-                      setShowEmojiPicker(
-                        false
-                      );
-                    }}
-                    className={cn(
-                      "h-9 w-9 rounded-full shrink-0 flex items-center justify-center transition-colors",
-                      showAttachMenu
-                        ? "bg-blue-100 text-blue-600"
-                        : "text-default-500 hover:text-default-700 hover:bg-default-200"
-                    )}
-                  >
-                    <Icon
-                      icon="heroicons:paper-clip"
-                      width={22}
-                      height={22}
-                    />
-                  </button>
-                </>
-              )}
-
-              {isRecording ? (
-                <div className="flex-1 h-9 rounded-full bg-red-50 text-sm border border-red-200 px-4 flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-
-                  <span className="text-red-500 font-medium">
-                    Recording...{" "}
-                    {Math.floor(
-                      recordingTime /
-                        60
-                    )}
-                    :
-                    {recordingTime %
-                      60 <
-                    10
-                      ? "0"
-                      : ""}
-                    {recordingTime %
-                      60}
-                  </span>
-                </div>
-              ) : (
-                <Input
-                  placeholder="Type a message..."
-                  className="flex-1 h-9 rounded-full bg-white dark:bg-default-800 text-sm border border-default-200 px-4"
-                  value={
-                    chatInput
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    setChatInput(
-                      event.target
-                        .value
-                    )
-                  }
-                  onKeyDown={(
-                    event
-                  ) => {
-                    if (
-                      event.key ===
-                      "Enter"
-                    ) {
-                      event.preventDefault();
-
-                      handleSendChatMessage();
-                    }
-                  }}
-                />
-              )}
-
-              {!isRecording &&
-                (chatInput.trim() ||
-                  chatPreviewFile) && (
-                  <button
-                    type="button"
-                    onClick={
-                      handleSendChatMessage
-                    }
-                    disabled={
-                      !socketConnected
-                    }
-                    className={cn(
-                      "h-9 px-4 rounded-full shrink-0 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm",
-                      socketConnected
-                        ? "bg-emerald-500 hover:bg-emerald-600"
-                        : "bg-gray-400 cursor-not-allowed"
-                    )}
-                  >
-                    <Icon
-                      icon="heroicons:paper-airplane"
-                      width={15}
-                      height={15}
-                    />
-
-                    Send
-                  </button>
-                )}
-
-              {!chatInput.trim() &&
-                !chatPreviewFile && (
-                  <button
-                    type="button"
-                    onClick={
-                      toggleRecording
-                    }
-                    className={cn(
-                      "h-9 w-9 rounded-full shrink-0 text-white flex items-center justify-center transition-colors shadow-sm",
-                      isRecording
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-emerald-500 hover:bg-emerald-600"
-                    )}
-                  >
-                    {isRecording ? (
-                      <Icon
-                        icon="heroicons:stop"
-                        width={17}
-                        height={17}
-                      />
-                    ) : (
-                      <Icon
-                        icon="heroicons:microphone"
-                        width={17}
-                        height={17}
-                      />
-                    )}
-                  </button>
-                )}
-            </div>
           </div>
 
-        </CardContent>
-      </Card>
-    );
-  };
+          {/* PREVIEW SELECTED FILE */}
+          {chatPreviewFile && (
+            <div className="px-3 py-2 bg-default-100 border-t border-default-200 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 truncate">
+                <Icon icon="heroicons:paper-clip" className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="font-medium truncate">{chatPreviewFile.fileName || "File selected"}</span>
+                {chatPreviewFile.fileSize && <span className="text-default-400 text-[10px]">({chatPreviewFile.fileSize})</span>}
+              </div>
+              <button type="button" onClick={() => setChatPreviewFile(null)} className="p-1 rounded-full hover:bg-default-200 text-default-500">
+                <Icon icon="heroicons:x-mark" className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* ATTACHMENT MENU OPTIONS */}
+          {showAttachMenu && (
+            <div className="px-3 py-2 bg-default-50 border-t border-default-200 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs text-default-700 hover:bg-default-200 px-2.5 py-1.5 rounded-md transition-colors"
+              >
+                <Icon icon="heroicons:photo" className="w-4 h-4 text-emerald-500" />
+                <span>Image / Video</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs text-default-700 hover:bg-default-200 px-2.5 py-1.5 rounded-md transition-colors"
+              >
+                <Icon icon="heroicons:document-text" className="w-4 h-4 text-blue-500" />
+                <span>Document</span>
+              </button>
+            </div>
+          )}
+
+          {/* QUICK EMOJI BAR */}
+          {showEmojiPicker && (
+            <div className="px-3 py-2 bg-default-50 border-t border-default-200 flex flex-wrap gap-1">
+              {quickEmojis.map((emoji, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleInsertEmoji(emoji)}
+                  className="p-1 hover:bg-default-200 rounded text-sm transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* INPUT BAR */}
+          <div className="px-3 py-2.5 bg-default-50 border-t border-default-200 flex items-center gap-2">
+            <input type="file" ref={fileInputRef as any} className="hidden" onChange={handleFileSelect} />
+
+            {!isRecording && (
+              <>
+                {/* EMOJI BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmojiPicker((prev) => !prev);
+                    setShowAttachMenu(false);
+                  }}
+                  className={cn(
+                    "h-9 w-9 rounded-full shrink-0 flex items-center justify-center transition-colors",
+                    showEmojiPicker ? "bg-emerald-100 text-emerald-600" : "text-default-500 hover:text-default-700 hover:bg-default-200"
+                  )}
+                >
+                  <Icon icon="heroicons:face-smile" width={22} height={22} />
+                </button>
+
+                {/* ATTACH BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAttachMenu((prev) => !prev);
+                    setShowEmojiPicker(false);
+                  }}
+                  className={cn(
+                    "h-9 w-9 rounded-full shrink-0 flex items-center justify-center transition-colors",
+                    showAttachMenu ? "bg-blue-100 text-blue-600" : "text-default-500 hover:text-default-700 hover:bg-default-200"
+                  )}
+                >
+                  <Icon icon="heroicons:paper-clip" width={22} height={22} />
+                </button>
+              </>
+            )}
+
+            {/* RECORDING OR INPUT */}
+            {isRecording ? (
+              <div className="flex-1 h-9 rounded-full bg-red-50 text-xs border border-red-200 px-4 flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-red-500 font-medium">
+                  Recording... {Math.floor(recordingTime / 60)}:{recordingTime % 60 < 10 ? "0" : ""}{recordingTime % 60}
+                </span>
+              </div>
+            ) : (
+              <Input
+                placeholder="Type a message..."
+                className="flex-1 h-9 rounded-full bg-background text-xs border border-default-200 px-4 shadow-none focus-visible:ring-1"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+            )}
+
+            {/* SEND OR MIC BUTTON */}
+            {!isRecording && (chatInput.trim() || chatPreviewFile) ? (
+              <button
+                type="button"
+                onClick={handleSend}
+                className="h-9 px-4 rounded-full shrink-0 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors bg-emerald-500 hover:bg-emerald-600 shadow-sm"
+              >
+                <Icon icon="heroicons:paper-airplane" width={15} height={15} />
+                <span>Send</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleToggleRec}
+                className={cn(
+                  "h-9 w-9 rounded-full shrink-0 text-white flex items-center justify-center transition-colors shadow-sm",
+                  isRecording ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"
+                )}
+              >
+                <Icon icon={isRecording ? "heroicons:stop" : "heroicons:microphone"} width={18} height={18} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* DEV DEBUG INFO */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="text-[10px] text-default-400 space-y-0.5 pt-1">
+            <div>WebSocket: {socketConnected ? "CONNECTED" : "DISCONNECTED"}</div>
+            <div>Messages: {displayMessages.length}</div>
+            <div>Topics: {Array.isArray(socketTopic) ? socketTopic.join(", ") : socketTopic}</div>
+            <div>Send: {chatSendDestination}</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 export default Section3ChatTimeline;

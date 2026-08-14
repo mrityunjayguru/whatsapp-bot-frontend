@@ -1,4 +1,3 @@
-
 import SiteBreadcrumb from "@/components/site-breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";

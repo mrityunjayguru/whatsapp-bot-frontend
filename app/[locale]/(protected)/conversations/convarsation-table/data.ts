@@ -187,7 +187,6 @@ export const data: DataProps[] = customerNames.map((name, idx) => {
     customerName: name,
     customerImage: avatars[idx % avatars.length],
     mobile: mobileNumbers[idx % mobileNumbers.length],
-    phonenumber: mobileNumbers[idx % mobileNumbers.length], // 👈 ADD THIS LINE
     tags: allTags[idx % allTags.length],
     assignedTo: {
       name: agentNames[idx % agentNames.length],
@@ -201,6 +200,7 @@ export const data: DataProps[] = customerNames.map((name, idx) => {
     unread,
     isChatbot,
     profilename: name,
+    phonenumber: mobileNumbers[idx % mobileNumbers.length],
     action: null,
   };
 });
@@ -209,3 +209,4 @@ export function getConversationById(id: string | number): DataProps | undefined 
   const numericId = typeof id === "string" ? Number(id) : id;
   return data.find((item) => Number(item.id) === numericId);
 }
+

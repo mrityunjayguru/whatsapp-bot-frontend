@@ -309,6 +309,44 @@
   body {
     @apply text-foreground;
   }
+
+  /* Custom Sleek & Thin Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--default-300) / 0.7);
+    border-radius: 9999px;
+    transition: background 0.2s ease-in-out;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--default-400));
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--default-700) / 0.7);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--default-600));
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--default-300) / 0.7) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: hsl(var(--default-700) / 0.7) transparent;
+  }
 }
 
 @utility container {

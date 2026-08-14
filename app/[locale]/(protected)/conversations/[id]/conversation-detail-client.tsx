@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import {
   Dialog,
   DialogContent,
@@ -597,89 +596,120 @@ function getChatMessageType(
    API -> CHAT
 ========================================================= */
 
+function determineSender(item: ApiConversation): "customer" | "employee" {
+  const senderVal = String(item.sender ?? "").toLowerCase().trim();
+  const statusVal = String(item.messagestatus ?? item.status ?? "").toLowerCase().trim();
+  const msgId = String(item.messageId ?? item.id ?? "").toLowerCase().trim();
+
+  // 1. Check sender string
+  if (
+    senderVal.includes("employee") ||
+    senderVal.includes("agent") ||
+    senderVal.includes("admin") ||
+    senderVal.includes("staff") ||
+    senderVal.includes("user") ||
+    senderVal === "outgoing" ||
+    senderVal === "outbound" ||
+    senderVal === "me" ||
+    senderVal === "sent"
+  ) {
+    return "employee";
+  }
+
+  // 2. Check message status (sent, delivered, read, sending, outbound)
+  if (
+    statusVal === "sent" ||
+    statusVal === "delivered" ||
+    statusVal === "read" ||
+    statusVal === "sending" ||
+    statusVal === "outbound" ||
+    statusVal === "outgoing"
+  ) {
+    return "employee";
+  }
+
+  // 3. Check ID prefixes
+  if (
+    msgId.startsWith("sent") ||
+    msgId.startsWith("opt") ||
+    msgId.startsWith("local") ||
+    msgId.startsWith("client")
+  ) {
+    return "employee";
+  }
+
+  return "customer";
+}
+
 function convertApiMessages(
   apiData: ApiConversation[]
 ): ChatMessage[] {
-  const messages: ChatMessage[] =
-    [];
+  const messages: ChatMessage[] = [];
 
-  apiData.forEach(
-    (item) => {
+  if (Array.isArray(apiData)) {
+    apiData.forEach((item: any) => {
+      const textContent = (
+        item.messagebody ??
+        item.messageBody ??
+        item.message ??
+        item.content ??
+        item.text ??
+        item.caption ??
+        item.body ??
+        (typeof item.payload === "string" ? item.payload : item.payload?.message || item.payload?.text || "") ??
+        ""
+      ).trim();
 
-      /*
-       * CUSTOMER MESSAGE
-       */
+      const hasFile = Boolean(item.filePath || item.mediaId || item.url || item.mimeType);
 
-      if (
-        item.messagebody?.trim()
-      ) {
-
-        const type =
-          getChatMessageType(
-            item.mimeType,
-            item.filePath
-          );
+      if (textContent || hasFile) {
+        const type = getChatMessageType(item.mimeType, item.filePath);
+        const sender = determineSender(item);
 
         messages.push({
-          id:
-            item.messageId ??
-            `customer-${item.id}`,
-
-          sender:
-            "customer",
-
+          id: item.messageId ?? item.id ?? `msg-${Math.random().toString(36).slice(2, 7)}`,
+          sender,
           type,
-
-          content:
-            item.messagebody ||
-            undefined,
-
-          fileName:
-            item.filePath ||
-            undefined,
-
-          time:
-            formatTime(
-              item.receivedAt ||
-                item.created_at
-            ),
+          content: textContent || undefined,
+          fileName: item.filePath || undefined,
+          thumbnail: item.filePath || item.url || undefined,
+          time: formatTime(item.receivedAt || item.created_at || item.updated_at),
         });
       }
 
       /*
        * BOT MESSAGE
        */
-
-      const botData =
-        parseChatbotData(
-          item.chatbaotdata
-        );
-
-      if (
-        botData?.reply
-      ) {
-
+      const botData = parseChatbotData(item.chatbaotdata);
+      if (botData?.reply) {
         messages.push({
-          id:
-            `bot-${item.id}`,
-
-          sender:
-            "employee",
-
-          type:
-            "text",
-
-          content:
-            botData.reply,
-
-          time:
-            formatTime(
-              item.created_at
-            ),
+          id: `bot-${item.id}`,
+          sender: "employee",
+          type: "text",
+          content: botData.reply,
+          time: formatTime(item.created_at),
         });
       }
+    });
+  }
+
+  // Merge locally saved sent messages for this phone number so reloads never lose sent messages
+  if (typeof window !== "undefined" && apiData?.[0]?.phonenumber) {
+    try {
+      const phoneKey = `sent_msgs_${apiData[0].phonenumber.trim()}`;
+      const saved = JSON.parse(localStorage.getItem(phoneKey) || "[]");
+      if (Array.isArray(saved) && saved.length > 0) {
+        saved.forEach((savedMsg: ChatMessage) => {
+          const exists = messages.some((m) => String(m.id) === String(savedMsg.id) || (m.content && savedMsg.content && m.content === savedMsg.content && m.sender === savedMsg.sender));
+          if (!exists) {
+            messages.push(savedMsg);
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Failed reading sent messages from localStorage:", e);
     }
-  );
+  }
 
   return messages;
 }
@@ -2560,74 +2590,71 @@ export function ConversationDetailClient({
 
 
       try {
+        setIsSending(true);
 
-        setIsSending(
-          true
-        );
+        // Optimistically add message to chatMessages so it appears immediately
+        const optimisticMsg: ChatMessage = {
+          id: `sent-opt-${Date.now()}`,
+          sender: "employee",
+          type: files.length > 0 ? (files[0].type.startsWith("image/") ? "image" : files[0].type.startsWith("video/") ? "video" : files[0].type.startsWith("audio/") ? "audio" : "file") : "text",
+          content: messageText,
+          fileName: files.length > 0 ? files[0].name : undefined,
+          fileSize: files.length > 0 ? `${(files[0].size / 1024).toFixed(1)} KB` : undefined,
+          thumbnail: files.length > 0 ? URL.createObjectURL(files[0]) : undefined,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
 
+        setChatMessages((prev) => [...prev, optimisticMsg]);
+
+        // Save sent message to localStorage so it survives page reloads
+        if (typeof window !== "undefined" && customerPhone) {
+          try {
+            const phoneKey = `sent_msgs_${customerPhone.trim()}`;
+            const existing = JSON.parse(localStorage.getItem(phoneKey) || "[]");
+            localStorage.setItem(phoneKey, JSON.stringify([...existing, optimisticMsg]));
+          } catch (e) {
+            console.error("Failed saving sent message to localStorage:", e);
+          }
+        }
 
         /* ===============================================
            SEND TO BACKEND
         =============================================== */
-
-        if (
-          messageText &&
-          files.length === 0
-        ) {
-
-          await sendTextMessage(
-            customerPhone,
-            messageText
-          );
-
+        if (messageText && files.length === 0) {
+          await sendTextMessage(customerPhone, messageText);
         } else {
-
-          await sendMultipartMessage(
-            customerPhone,
-            messageText,
-            files
-          );
+          await sendMultipartMessage(customerPhone, messageText, files);
         }
 
+        setChatInput("");
+        setChatPreviewFile(null);
+        setAttachmentType(null);
+        setShowEmojiPicker(false);
+        setShowAttachMenu(false);
 
-        /*
-         * IMPORTANT:
-         *
-         * DO NOT add the message to chatMessages here.
-         *
-         * Backend WebSocket is responsible for
-         * updating the chat.
-         */
-
-
-        setChatInput(
-          ""
-        );
-
-        setChatPreviewFile(
-          null
-        );
-
-        setAttachmentType(
-          null
-        );
-
-        setShowEmojiPicker(
-          false
-        );
-
-        setShowAttachMenu(
-          false
-        );
-
-
-        if (
-          fileInputRef.current
-        ) {
-
-          fileInputRef.current.value =
-            "";
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
+
+        // Refetch actual backend messages after send
+        setTimeout(async () => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/conversation/byphonenumber/${customerPhone}`, {
+              method: "GET",
+              headers: { Accept: "application/json", "ngrok-skip-browser-warning": "1" },
+              cache: "no-store",
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const updated = convertApiMessages(data);
+              if (Array.isArray(updated) && updated.length > 0) {
+                setChatMessages(updated);
+              }
+            }
+          } catch (fetchErr) {
+            console.error("Refetch backend message failed:", fetchErr);
+          }
+        }, 1000);
 
       } catch (
         error
