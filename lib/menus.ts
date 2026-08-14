@@ -105,6 +105,34 @@ export function getMenuList(pathname: string, t: any): Group[] {
     },
     {
       groupLabel: "",
+      id: "main-faqs",
+      menus: [
+        {
+          id: "main-faqs",
+          href: "/faqs",
+          label: t("faqs"),
+          active: pathname.includes("/faqs") || pathname.includes("/faq"),
+          icon: "heroicons-outline:question-mark-circle",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
+      id: "main-chatbot",
+      menus: [
+        {
+          id: "main-chatbot",
+          href: "/chatbot",
+          label: t("chatbot"),
+          active: pathname.includes("/chatbot"),
+          icon: "heroicons-outline:chat-bubble-left-right",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
       id: "main-settings",
       menus: [
         {
@@ -453,9 +481,9 @@ export function getMenuList(pathname: string, t: any): Group[] {
               children: [],
             },
             {
-              href: "/utility/faq",
+              href: "/faqs",
               label: t("faq"),
-              active: pathname === "/utility/faq",
+              active: pathname === "/faqs" || pathname === "/faq" || pathname === "/utility/faq",
               icon: "heroicons:question-mark-circle",
               children: [],
             },
@@ -1365,6 +1393,48 @@ export function getHorizontalMenuList(pathname: string, t: any): Group[] {
     },
     {
       groupLabel: "",
+      id: "main-tags",
+      menus: [
+        {
+          id: "main-tags",
+          href: "/tags",
+          label: t("tags"),
+          active: pathname.includes("/tags"),
+          icon: "heroicons-outline:tag",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
+      id: "main-faqs",
+      menus: [
+        {
+          id: "main-faqs",
+          href: "/faqs",
+          label: t("faqs"),
+          active: pathname.includes("/faqs") || pathname.includes("/faq"),
+          icon: "heroicons-outline:question-mark-circle",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
+      id: "main-chatbot",
+      menus: [
+        {
+          id: "main-chatbot",
+          href: "/chatbot",
+          label: t("chatbot"),
+          active: pathname.includes("/chatbot"),
+          icon: "heroicons-outline:chat-bubble-left-right",
+          submenus: [],
+        },
+      ],
+    },
+    {
+      groupLabel: "",
       id: "main-settings",
       menus: [
         {
@@ -1703,9 +1773,9 @@ export function getHorizontalMenuList(pathname: string, t: any): Group[] {
               children: [],
             },
             {
-              href: "/utility/faq",
+              href: "/faqs",
               label: t("faq"),
-              active: pathname === "/utility/faq",
+              active: pathname === "/faqs" || pathname === "/faq" || pathname === "/utility/faq",
               icon: "heroicons:question-mark-circle",
               children: [],
             },
