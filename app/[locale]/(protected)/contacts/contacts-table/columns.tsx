@@ -19,8 +19,10 @@ import { cn } from "@/lib/utils";
 import { Link } from "@/components/navigation";
 
 export type DataProps = {
+  customname: string
   id: string | number;
   contactId: string;
+  whatsappphonenumberid: number;
   customerName: string;
   customerImage: string;
   whatsappName: string;
@@ -155,6 +157,14 @@ export const columns: ColumnDef<DataProps>[] = [
       <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("totalConversations")} Conversations</span>
     ),
     size: 150,
+  },
+  {
+    accessorKey: "whatsappphonenumberid",
+    header: "WhatsApp Phone Number ID",
+    cell: ({ row }) => (
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("whatsappphonenumberid")}</span>
+    ),
+    size: 180,
   },
   {
     accessorKey: "lastConversation",
