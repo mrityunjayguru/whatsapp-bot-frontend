@@ -14,9 +14,14 @@ export const Section1ContactInfo = ({
   openAddTag,
 }: any) => {
 
+console.log("contact");
+console.log(contact);
+console.log("contact");
 
-              {contact.customname || "Unknown nn Customer"}
-  console.log("Contact custom name:", contact);
+
+
+
+
   return (
     <Card>
       <CardContent className="p-4 space-y-3">

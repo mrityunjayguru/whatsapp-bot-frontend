@@ -62,11 +62,11 @@ export function ContactDetailClient({
   contact: DataProps;
 }) {
   const [customerInfo, setCustomerInfo] = useState({
-    customerName: contact.customname || contact.customerName || "Unknown Customer",
+    customname: contact.customname || "Unknown Customer",
     whatsappName: contact.whatsappName,
     phone: contact.mobile,
     email: contact.email,
-    tags: [...contact.tags],
+    tags: [contact.tags],
     customerSince: contact.createdAt,
     whatsappphonenumberid: contact.whatsappphonenumberid || "",
   });
@@ -79,7 +79,7 @@ export function ContactDetailClient({
   const [newTagInput, setNewTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([...customerInfo.tags]);
 
-  const customerInitials = customerInfo.customerName
+  const customerInitials = customerInfo.customname
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -118,7 +118,7 @@ export function ContactDetailClient({
 
 
 
-        data.customname = editForm.customerName;
+        data.customname = editForm.customname;
         data.email = editForm.email;
 
 const response = await fetch(
@@ -189,7 +189,7 @@ alert("Update successful: " +response.status);
 
   const displayContact = {
     ...contact,
-    customerName: customerInfo.customname,
+    customname: customerInfo.customname,
     whatsappName: customerInfo.whatsappName,
     mobile: customerInfo.phone,
     email: customerInfo.email,
@@ -286,11 +286,11 @@ alert("Update successful: " +response.status);
               <Label htmlFor="customerName">Customer Name</Label>
               <Input
                 id="customerName"
-                value={editForm.customerName}
+                value={editForm.customname}
                 onChange={(e) =>
                   setEditForm((prev) => ({
                     ...prev,
-                    customerName: e.target.value,
+                    customname: e.target.value,
                   }))
                 }
               />

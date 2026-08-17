@@ -56,7 +56,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import DateRangePicker from "@/components/date-range-picker"
 
 import TablePagination from "./table-pagination"
-import { data } from "./data"
+import { getContacts } from "./data"
 import { columns, DataProps } from "./columns"
 import { cn } from "@/lib/utils"
 import {
@@ -101,14 +101,28 @@ const ContactTable = () => {
     const [hasEmailOnly, setHasEmailOnly] = React.useState<boolean>(false)
     const [hasTagsOnly, setHasTagsOnly] = React.useState<boolean>(false)
     const [customerFilter, setCustomerFilter] = React.useState<string>("all")
+    const [data, setData] = React.useState<DataProps[]>([])
 
     const [customerOpen, setCustomerOpen] = React.useState(false)
     const [tagsOpen, setTagsOpen] = React.useState(false)
 
+    React.useEffect(() => {
+        const fetchContacts = async () => {
+            try {
+                const contacts = await getContacts()
+                setData(contacts)
+            } catch (error) {
+                console.error("Failed to load contacts:", error)
+            }
+        }
+
+        fetchContacts()
+    }, [])
+
     const customerOptions = React.useMemo(() => {
         const uniqueCustomers = Array.from(new Set(data.map((d) => d.customerName)))
         return [{ value: "all", label: "All Contacts" }, ...uniqueCustomers.map((c) => ({ value: c, label: c }))]
-    }, [])
+    }, [data])
 
     React.useEffect(() => {
         const newFilters: ColumnFiltersState = []
