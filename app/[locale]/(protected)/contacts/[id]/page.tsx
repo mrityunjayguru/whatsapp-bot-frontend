@@ -32,7 +32,8 @@ const ContactDetailPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const contact = getContactById(id);
+  // Added 'await' here so it properly resolves the Promise to DataProps
+  const contact = await getContactById(id);
 
   if (!contact) {
     return (
