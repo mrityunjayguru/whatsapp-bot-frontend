@@ -69,7 +69,7 @@ const contactData =
     : (contact as any).value;
 
 console.log("Contact after selection");
-console.log("Raw contact.value:", contact.value);
+console.log("Raw contact.value:", (contact as any).value);
 console.log("Parsed contactData:", contactData);
 console.log("Name:", contactData?.customerName);
 console.log("Custom name:", contactData?.customname);
