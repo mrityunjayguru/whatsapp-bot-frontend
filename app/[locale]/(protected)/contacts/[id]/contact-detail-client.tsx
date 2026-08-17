@@ -61,13 +61,18 @@ export function ContactDetailClient({
 }: {
   contact: DataProps;
 }) {
+
+console.log(" con=-----------------");
+console.log(contact);
+console.log(" con=-----------------");
+
+
   const contactData =
-    typeof (contact as any).value === "string"
-      ? JSON.parse((contact as any).value)
-      : (contact as any).value;
+    typeof (contact) === "string"
+      ? JSON.parse(contact)
+      : (contact )
 
   console.log("Contact after selection");
-  console.log("Raw contact.value:", (contact as any).value);
   console.log("Parsed contactData:", contactData);
   console.log("Name:", contactData?.customerName);
   console.log("Custom name:", contactData?.customname);
@@ -77,34 +82,34 @@ export function ContactDetailClient({
 
   const [customerInfo, setCustomerInfo] = useState({
     customname:
-      contactData.customerName ||
+      contactData?.customerName ||
       "Unknown Customer",
 
     whatsappName:
-      contactData.whatsappName ||
+      contactData?.whatsappName ||
       "",
 
     phone:
-      contactData.mobile ||
+      contactData?.mobile ||
       "",
 
     email:
-      contactData.email ||
+      contactData?.email ||
       "",
 
     tags:
-      Array.isArray(contactData.tags)
+      Array.isArray(contactData?.tags)
         ? contactData.tags
         : [],
 
     customerSince:
-      contactData.createdAt ||
+      contactData?.createdAt ||
       "",
 
     whatsappphonenumberid:
-      contactData.whatsappphonenumberid != null
+      contactData?.whatsappphonenumberid != null
         ? String(
-            contactData.whatsappphonenumberid
+            contactData?.whatsappphonenumberid
           )
         : "",
   });
