@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 interface Section2FAQChatbotResponseProps {
   answer: string;
   setAnswer: (val: string) => void;
-  attachment: string;
-  setAttachment: (val: string) => void;
+  attachmentFile: File | null;
+  setAttachmentFile: (val: File | null) => void;
   url: string;
   setUrl: (val: string) => void;
   className?: string;
@@ -22,8 +22,8 @@ interface Section2FAQChatbotResponseProps {
 export const Section2FAQChatbotResponse = ({
   answer,
   setAnswer,
-  attachment,
-  setAttachment,
+  attachmentFile,
+  setAttachmentFile,
   url,
   setUrl,
   className,
@@ -33,7 +33,7 @@ export const Section2FAQChatbotResponse = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setAttachment(file.name);
+      setAttachmentFile(file);
     }
   };
 
@@ -73,10 +73,10 @@ export const Section2FAQChatbotResponse = ({
             <div className="flex gap-2">
               <Input
                 id="attachment"
-                placeholder="e.g. quickstart_guide.pdf"
-                value={attachment}
-                onChange={(e) => setAttachment(e.target.value)}
-                className="h-10 border-default-200 flex-1"
+                placeholder="No file selected"
+                value={attachmentFile?.name ?? ""}
+                readOnly
+                className="h-10 border-default-200 flex-1 cursor-default"
               />
               <Button
                 type="button"
@@ -92,8 +92,21 @@ export const Section2FAQChatbotResponse = ({
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileChange}
+                accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv"
               />
             </div>
+            {attachmentFile && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAttachmentFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="text-xs text-destructive hover:underline"
+              >
+                Remove selected file
+              </button>
+            )}
           </div>
 
           {/* URL Input */}

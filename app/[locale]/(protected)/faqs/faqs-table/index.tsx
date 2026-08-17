@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/select";
 import DateRangePicker from "@/components/date-range-picker";
 import TablePagination from "./table-pagination";
-import { initialFaqData, FAQDataProps } from "./data";
+import { FAQDataProps } from "./data";
 import { getColumns } from "./columns";
 import { AddEditFAQDialog } from "./add-edit-faq-dialog";
 import { ViewFAQDialog } from "./view-faq-dialog";
@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Search, Plus, RefreshCw, PlusCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "@/components/navigation";
+import { listFaqSources, deleteFaqSource, FAQSource } from "../faq-api-service";
 
 const categoryOptions = [
   { value: "all", label: "All Categories" },
@@ -83,22 +84,53 @@ const matchTypeOptions = [
   { value: "Keyword Match", label: "Keyword Match" },
 ];
 
+// Maps a live backend FAQ source into the shape the existing table UI expects.
+// category / keywords / matchType / priority / status / createdBy aren't
+// stored by the backend yet, so they're filled with sensible placeholders.
+function mapSourceToFaqRow(s: FAQSource): FAQDataProps {
+  return {
+    id: s.id,
+    faqId: s.id,
+    question: s.name,
+    category: "General",
+    keywords: [],
+    answerPreview: "",
+    fullAnswer: "",
+    attachment: s.type === "document" ? s.source_url : null,
+    url: s.type === "url" || s.type === "video" ? s.source_url ?? "" : "",
+    matchType: "AI Semantic",
+    priority: "Medium",
+    status: "Active",
+    createdBy: {
+      name: "—",
+      avatar: "",
+    },
+    createdAt: s.added_at ? s.added_at.split("T")[0] : "",
+    updatedAt: s.added_at ? s.added_at.split("T")[0] : "",
+  };
+}
+
 export default function FAQTable() {
   const router = useRouter();
-  const [data, setData] = React.useState<FAQDataProps[]>(initialFaqData);
+  const [data, setData] = React.useState<FAQDataProps[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const loadFaqs = React.useCallback(() => {
+    setLoading(true);
+    listFaqSources()
+      .then((sources: FAQSource[]) => {
+        setData(sources.map(mapSourceToFaqRow));
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error("Failed to load FAQs — check the backend connection");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   React.useEffect(() => {
-    const saved = localStorage.getItem("faqs_data");
-    if (saved) {
-      try {
-        setData(JSON.parse(saved));
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      localStorage.setItem("faqs_data", JSON.stringify(initialFaqData));
-    }
-  }, []);
+    loadFaqs();
+  }, [loadFaqs]);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -157,14 +189,13 @@ export default function FAQTable() {
     setAddEditOpen(true);
   };
 
+  // NOTE: the live backend has no "update" endpoint for a FAQ source yet -
+  // toggling status here only changes it in this browser's view, it is not
+  // persisted to the server or reflected in what the bot actually uses.
   const handleToggleStatus = (faq: FAQDataProps) => {
     const newStatus: "Active" | "Inactive" = faq.status === "Active" ? "Inactive" : "Active";
-    setData((prev) => {
-      const updated = prev.map((item) => (item.id === faq.id ? { ...item, status: newStatus } : item));
-      localStorage.setItem("faqs_data", JSON.stringify(updated));
-      return updated;
-    });
-    toast.success(`FAQ ${faq.faqId} status set to ${newStatus}`);
+    setData((prev) => prev.map((item) => (item.id === faq.id ? { ...item, status: newStatus } : item)));
+    toast.success(`FAQ ${faq.faqId} status set to ${newStatus} (display only — not saved to server)`);
   };
 
   const handleDeletePrompt = (faq: FAQDataProps) => {
@@ -173,20 +204,24 @@ export default function FAQTable() {
   };
 
   const handleConfirmDelete = async () => {
-    if (deletingFaq) {
-      setData((prev) => {
-        const updated = prev.filter((item) => item.id !== deletingFaq.id);
-        localStorage.setItem("faqs_data", JSON.stringify(updated));
-        return updated;
-      });
+    if (!deletingFaq) return;
+    try {
+      await deleteFaqSource(deletingFaq.id);
+      setData((prev) => prev.filter((item) => item.id !== deletingFaq.id));
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete FAQ from the server");
     }
   };
 
+  // NOTE: same as handleToggleStatus above - editing an existing FAQ's text
+  // here is display-only until the backend gets an update endpoint. Use the
+  // "Add FAQ" flow (which really does hit the live API) for real changes,
+  // and delete + recreate in the meantime for edits that must be live.
   const handleSaveFAQ = (faqDataInput: Partial<FAQDataProps>) => {
     if (editingFaq) {
-      // Update
-      setData((prev) => {
-        const updated = prev.map((item) =>
+      setData((prev) =>
+        prev.map((item) =>
           item.id === editingFaq.id
             ? ({
                 ...item,
@@ -194,41 +229,9 @@ export default function FAQTable() {
                 updatedAt: new Date().toISOString().split("T")[0],
               } as FAQDataProps)
             : item
-        );
-        localStorage.setItem("faqs_data", JSON.stringify(updated));
-        return updated;
-      });
-      toast.success("FAQ updated successfully!");
-    } else {
-      // Create
-      const newId = (data.length + 1).toString();
-      const newFaqId = `FAQ-10${data.length + 1}`;
-      const newFaq: FAQDataProps = {
-        id: newId,
-        faqId: newFaqId,
-        question: faqDataInput.question || "",
-        category: faqDataInput.category || "General",
-        keywords: faqDataInput.keywords || [],
-        answerPreview: faqDataInput.answerPreview || "",
-        fullAnswer: faqDataInput.fullAnswer || "",
-        attachment: faqDataInput.attachment || null,
-        url: faqDataInput.url || "",
-        matchType: faqDataInput.matchType || "Exact Match",
-        priority: faqDataInput.priority || "Medium",
-        status: faqDataInput.status || "Active",
-        createdBy: {
-          name: "Kathryn Murphy",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kathryn",
-        },
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
-      };
-      setData((prev) => {
-        const updated = [newFaq, ...prev];
-        localStorage.setItem("faqs_data", JSON.stringify(updated));
-        return updated;
-      });
-      toast.success("New FAQ added successfully!");
+        )
+      );
+      toast.success("FAQ updated (display only — not saved to server)");
     }
   };
 
@@ -282,17 +285,29 @@ export default function FAQTable() {
         {/* Title & Action Button Row */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex-1 text-xl font-medium text-default-900">FAQ</div>
-          <Button
-            color="primary"
-            size="sm"
-            className="h-9 gap-1.5 shadow-none"
-            onClick={() => {
-              router.push("/faqs/create");
-            }}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add FAQ</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={loadFaqs}
+              disabled={loading}
+            >
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              <span>Refresh</span>
+            </Button>
+            <Button
+              color="primary"
+              size="sm"
+              className="h-9 gap-1.5 shadow-none"
+              onClick={() => {
+                router.push("/faqs/create");
+              }}
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Add FAQ</span>
+            </Button>
+          </div>
         </div>
 
         {/* Filter Controls Row */}
@@ -497,7 +512,16 @@ export default function FAQTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-default-500"
+                >
+                  Loading FAQs…
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

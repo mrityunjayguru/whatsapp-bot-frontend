@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useRouter } from "@/components/navigation";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { FAQDataProps, initialFaqData } from "../faqs-table/data";
+import { FAQDataProps } from "../faqs-table/data";
+import { uploadFaqText, uploadFaqDocument } from "../faq-api-service";
 
 import { Section1FAQForm } from "./__components/section-1-faq-form";
 import { Section2FAQChatbotResponse } from "./__components/section-2-faq-chatbot-response";
@@ -22,34 +23,16 @@ export function CreateFAQClient() {
   const [priority, setPriority] = useState<FAQDataProps["priority"]>("Medium");
   const [status, setStatus] = useState<FAQDataProps["status"]>("Active");
   const [answer, setAnswer] = useState("");
-  const [attachment, setAttachment] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const [faqId, setFaqId] = useState("FAQ-111");
+  // Note: category / keywords / matchType / priority / status are collected
+  // here but the live backend (FastAPI FAQ store) doesn't persist them yet -
+  // only `question` (-> name), `answer` (-> text), `url` (-> source_url),
+  // and an attached file are sent to the bot's real knowledge base.
 
-  useEffect(() => {
-    const saved = localStorage.getItem("faqs_data");
-    let currentLength = initialFaqData.length;
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          currentLength = parsed.length;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setFaqId(`FAQ-10${currentLength + 1}`);
-  }, []);
-
-  // Split and clean keywords
-  const keywords = keywordsInput
-    .split(",")
-    .map((k) => k.trim())
-    .filter((k) => k.length > 0);
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!question.trim()) {
       toast.error("Question is required");
       return;
@@ -59,46 +42,29 @@ export function CreateFAQClient() {
       return;
     }
 
-    // Get current data from localStorage
-    let currentData = [...initialFaqData];
-    const saved = localStorage.getItem("faqs_data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          currentData = parsed;
-        }
-      } catch (e) {
-        console.error(e);
+    setSaving(true);
+    try {
+      // The written answer always goes in as a text source the bot can search.
+      await uploadFaqText(
+        answer.trim(),
+        question.trim(),
+        url.trim() || undefined,
+        false // false = bot pastes the answer text; true = bot just sends the link
+      );
+
+      // If a file was attached, index it as a separate document source.
+      if (attachmentFile) {
+        await uploadFaqDocument(attachmentFile, true);
       }
+
+      toast.success("New FAQ added and indexed for the bot!");
+      router.push("/faqs");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save FAQ — check the backend connection");
+    } finally {
+      setSaving(false);
     }
-
-    const newId = (currentData.length + 1).toString();
-    const newFaq: FAQDataProps = {
-      id: newId,
-      faqId: faqId,
-      question: question.trim(),
-      category: category,
-      keywords: keywords,
-      answerPreview: answer.slice(0, 100) + (answer.length > 100 ? "..." : ""),
-      fullAnswer: answer.trim(),
-      attachment: attachment.trim() ? attachment.trim() : null,
-      url: url.trim(),
-      matchType: matchType,
-      priority: priority,
-      status: status,
-      createdBy: {
-        name: "Kathryn Murphy",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kathryn",
-      },
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-
-    const updatedData = [newFaq, ...currentData];
-    localStorage.setItem("faqs_data", JSON.stringify(updatedData));
-    toast.success("New FAQ added successfully!");
-    router.push("/faqs");
   };
 
   return (
@@ -116,12 +82,6 @@ export function CreateFAQClient() {
               Back to FAQs
             </Button>
           </Link>
-          <div className="text-xs text-default-500">
-            FAQ ID #{" "}
-            <span className="font-semibold text-default-800">
-              {faqId}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -155,8 +115,8 @@ export function CreateFAQClient() {
           <Section2FAQChatbotResponse
             answer={answer}
             setAnswer={setAnswer}
-            attachment={attachment}
-            setAttachment={setAttachment}
+            attachmentFile={attachmentFile}
+            setAttachmentFile={setAttachmentFile}
             url={url}
             setUrl={setUrl}
             className="h-full"
