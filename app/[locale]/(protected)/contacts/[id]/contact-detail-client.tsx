@@ -61,55 +61,53 @@ export function ContactDetailClient({
 }: {
   contact: DataProps;
 }) {
+  const contactData =
+    typeof (contact as any).value === "string"
+      ? JSON.parse((contact as any).value)
+      : (contact as any).value;
 
+  console.log("Contact after selection");
+  console.log("Raw contact.value:", (contact as any).value);
+  console.log("Parsed contactData:", contactData);
+  console.log("Name:", contactData?.customerName);
+  console.log("Custom name:", contactData?.customname);
+  console.log("Mobile:", contactData?.mobile);
+  console.log("Email:", contactData?.email);
+  console.log("Contact after selection");
 
-const contactData =
-  typeof (contact as any).value === "string"
-    ? JSON.parse((contact as any).value)
-    : (contact as any).value;
+  const [customerInfo, setCustomerInfo] = useState({
+    customname:
+      contactData.customerName ||
+      "Unknown Customer",
 
-console.log("Contact after selection");
-console.log("Raw contact.value:", (contact as any).value);
-console.log("Parsed contactData:", contactData);
-console.log("Name:", contactData?.customerName);
-console.log("Custom name:", contactData?.customname);
-console.log("Mobile:", contactData?.mobile);
-console.log("Email:", contactData?.email);
-console.log("Contact after selection");
+    whatsappName:
+      contactData.whatsappName ||
+      "",
 
-const [customerInfo, setCustomerInfo] = useState({
-  customname:
-    contactData.customerName ||
-    "Unknown Customer",
+    phone:
+      contactData.mobile ||
+      "",
 
-  whatsappName:
-    contactData.whatsappName ||
-    "",
+    email:
+      contactData.email ||
+      "",
 
-  phone:
-    contactData.mobile ||
-    "",
+    tags:
+      Array.isArray(contactData.tags)
+        ? contactData.tags
+        : [],
 
-  email:
-    contactData.email ||
-    "",
+    customerSince:
+      contactData.createdAt ||
+      "",
 
-  tags:
-    Array.isArray(contactData.tags)
-      ? contactData.tags
-      : [],
-
-  customerSince:
-    contactData.createdAt ||
-    "",
-
-  whatsappphonenumberid:
-    contactData.whatsappphonenumberid != null
-      ? String(
-          contactData.whatsappphonenumberid
-        )
-      : "",
-});
+    whatsappphonenumberid:
+      contactData.whatsappphonenumberid != null
+        ? String(
+            contactData.whatsappphonenumberid
+          )
+        : "",
+  });
 
   const [editContactOpen, setEditContactOpen] = useState(false);
   const [addTagOpen, setAddTagOpen] = useState(false);
@@ -121,7 +119,7 @@ const [customerInfo, setCustomerInfo] = useState({
 
   const customerInitials = customerInfo.customname
     .split(" ")
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
@@ -137,54 +135,43 @@ const [customerInfo, setCustomerInfo] = useState({
   };
 
   const saveEditContact = () => {
-
-    
     console.log("editForm");
     console.log(editForm);
     console.log("editForm");
 
-    
     fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/byphonenumber/${editForm.phone}`, {
-       method: "GET",
-        headers: {
-            "Accept": "application/json",
-            "ngrok-skip-browser-warning": "1"
-        }
-      })
-
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "ngrok-skip-browser-warning": "1"
+      }
+    })
       .then((response) => response.json())
       .then(async (data) => {
         console.log("Fetched contact data:", data);
 
-
-
         data.customname = editForm.customname;
         data.email = editForm.email;
 
-const response = await fetch(
-  `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/update`,
-  {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
-    body: JSON.stringify(data),
-  }
-);
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/update`,
+          {
+            method: "POST",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "1",
+            },
+            body: JSON.stringify(data),
+          }
+        );
 
-if (!response.ok) {
-  throw new Error(`Update failed: ${response.status}`);
-}
+        if (!response.ok) {
+          throw new Error(`Update failed: ${response.status}`);
+        }
 
-const result = await response.text();
-alert("Update successful: " +response.status);
-
-
-
-
-
+        const result = await response.text();
+        alert("Update successful: " + response.status);
       });
 
     setCustomerInfo({ ...editForm });
@@ -370,11 +357,10 @@ alert("Update successful: " +response.status);
               />
             </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="whatsappphonenumberid">WhatsApp phonenummberid</Label>
               <Input
                 id="whatsappphonenumberid"
-                type="whatsappphonenumberid"
                 value={editForm.whatsappphonenumberid}
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, whatsappphonenumberid: e.target.value }))
