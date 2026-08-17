@@ -62,12 +62,13 @@ export function ContactDetailClient({
   contact: DataProps;
 }) {
   const [customerInfo, setCustomerInfo] = useState({
-    customerName: contact.customerName,
+    customname: contact.customname || "Unknown Customer",
     whatsappName: contact.whatsappName,
     phone: contact.mobile,
     email: contact.email,
-    tags: [...contact.tags],
+    tags: [contact.tags],
     customerSince: contact.createdAt,
+    whatsappphonenumberid: contact.whatsappphonenumberid || "",
   });
 
   const [editContactOpen, setEditContactOpen] = useState(false);
@@ -78,7 +79,7 @@ export function ContactDetailClient({
   const [newTagInput, setNewTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([...customerInfo.tags]);
 
-  const customerInitials = customerInfo.customerName
+  const customerInitials = customerInfo.customname
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -96,6 +97,56 @@ export function ContactDetailClient({
   };
 
   const saveEditContact = () => {
+
+    
+    console.log("editForm");
+    console.log(editForm);
+    console.log("editForm");
+
+    
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/byphonenumber/${editForm.phone}`, {
+       method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+      })
+
+      .then((response) => response.json())
+      .then(async (data) => {
+        console.log("Fetched contact data:", data);
+
+
+
+        data.customname = editForm.customname;
+        data.email = editForm.email;
+
+const response = await fetch(
+  `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/update`,
+  {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
+    },
+    body: JSON.stringify(data),
+  }
+);
+
+if (!response.ok) {
+  throw new Error(`Update failed: ${response.status}`);
+}
+
+const result = await response.text();
+alert("Update successful: " +response.status);
+
+
+
+
+
+      });
+
     setCustomerInfo({ ...editForm });
     setEditContactOpen(false);
   };
@@ -138,7 +189,7 @@ export function ContactDetailClient({
 
   const displayContact = {
     ...contact,
-    customerName: customerInfo.customerName,
+    customname: customerInfo.customname,
     whatsappName: customerInfo.whatsappName,
     mobile: customerInfo.phone,
     email: customerInfo.email,
@@ -235,11 +286,11 @@ export function ContactDetailClient({
               <Label htmlFor="customerName">Customer Name</Label>
               <Input
                 id="customerName"
-                value={editForm.customerName}
+                value={editForm.customname}
                 onChange={(e) =>
                   setEditForm((prev) => ({
                     ...prev,
-                    customerName: e.target.value,
+                    customname: e.target.value,
                   }))
                 }
               />
@@ -278,6 +329,19 @@ export function ContactDetailClient({
                 }
               />
             </div>
+
+                <div className="space-y-2">
+              <Label htmlFor="whatsappphonenumberid">WhatsApp phonenummberid</Label>
+              <Input
+                id="whatsappphonenumberid"
+                type="whatsappphonenumberid"
+                value={editForm.whatsappphonenumberid}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, whatsappphonenumberid: e.target.value }))
+                }
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="customerSince">Customer Since</Label>
               <Input
@@ -303,7 +367,7 @@ export function ContactDetailClient({
               </Button>
             </DialogClose>
             <Button color="primary" size="sm" className="h-9" onClick={saveEditContact}>
-              Save Changes
+              Save Changes 
             </Button>
           </DialogFooter>
         </DialogContent>
