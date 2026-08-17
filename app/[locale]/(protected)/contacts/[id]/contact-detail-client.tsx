@@ -210,7 +210,7 @@ export function ContactDetailClient({
   const removeTagFromContact = (tag: string) => {
     setCustomerInfo((prev) => ({
       ...prev,
-      tags: prev.tags.filter((t) => t !== tag),
+      tags: prev.tags.filter((t: string) => t !== tag),
     }));
   };
 
