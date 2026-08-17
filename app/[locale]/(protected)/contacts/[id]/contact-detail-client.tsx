@@ -64,9 +64,9 @@ export function ContactDetailClient({
 
 
 const contactData =
-  typeof contact.value === "string"
-    ? JSON.parse(contact.value)
-    : contact.value;
+  typeof (contact as any).value === "string"
+    ? JSON.parse((contact as any).value)
+    : (contact as any).value;
 
 console.log("Contact after selection");
 console.log("Raw contact.value:", contact.value);
