@@ -185,7 +185,7 @@ export const columns: ColumnDef<DataProps>[] = [
   {
     id: "actions",
     accessorKey: "action",
-    header: "Action",
+    header: "Action View",
     enableHiding: false,
     cell: ({ row }) => {
       const convId = row.original.id;

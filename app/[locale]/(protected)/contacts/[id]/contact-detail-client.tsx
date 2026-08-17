@@ -61,15 +61,55 @@ export function ContactDetailClient({
 }: {
   contact: DataProps;
 }) {
-  const [customerInfo, setCustomerInfo] = useState({
-    customname: contact.customname || "Unknown Customer",
-    whatsappName: contact.whatsappName,
-    phone: contact.mobile,
-    email: contact.email,
-    tags: [contact.tags],
-    customerSince: contact.createdAt,
-    whatsappphonenumberid: contact.whatsappphonenumberid || "",
-  });
+
+
+const contactData =
+  typeof contact.value === "string"
+    ? JSON.parse(contact.value)
+    : contact.value;
+
+console.log("Contact after selection");
+console.log("Raw contact.value:", contact.value);
+console.log("Parsed contactData:", contactData);
+console.log("Name:", contactData?.customerName);
+console.log("Custom name:", contactData?.customname);
+console.log("Mobile:", contactData?.mobile);
+console.log("Email:", contactData?.email);
+console.log("Contact after selection");
+
+const [customerInfo, setCustomerInfo] = useState({
+  customname:
+    contactData.customerName ||
+    "Unknown Customer",
+
+  whatsappName:
+    contactData.whatsappName ||
+    "",
+
+  phone:
+    contactData.mobile ||
+    "",
+
+  email:
+    contactData.email ||
+    "",
+
+  tags:
+    Array.isArray(contactData.tags)
+      ? contactData.tags
+      : [],
+
+  customerSince:
+    contactData.createdAt ||
+    "",
+
+  whatsappphonenumberid:
+    contactData.whatsappphonenumberid != null
+      ? String(
+          contactData.whatsappphonenumberid
+        )
+      : "",
+});
 
   const [editContactOpen, setEditContactOpen] = useState(false);
   const [addTagOpen, setAddTagOpen] = useState(false);
