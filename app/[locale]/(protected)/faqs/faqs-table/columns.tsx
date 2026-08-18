@@ -34,30 +34,30 @@ import { Link } from "@/components/navigation";
 
 // Tag & Keyword styling per Conversations / Contacts page pattern
 const keywordColors: Record<string, string> = {
-  "Onboarding": "bg-blue-500/15 text-blue-600 border-blue-500/20",
-  "Setup": "bg-purple-500/15 text-purple-600 border-purple-500/20",
-  "Quickstart": "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
-  "Password": "bg-amber-500/15 text-amber-600 border-amber-500/20",
-  "Security": "bg-red-500/15 text-red-600 border-red-500/20",
+  Onboarding: "bg-blue-500/15 text-blue-600 border-blue-500/20",
+  Setup: "bg-purple-500/15 text-purple-600 border-purple-500/20",
+  Quickstart: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
+  Password: "bg-amber-500/15 text-amber-600 border-amber-500/20",
+  Security: "bg-red-500/15 text-red-600 border-red-500/20",
   "2FA": "bg-rose-500/15 text-rose-600 border-rose-500/20",
-  "Payments": "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
-  "Visa": "bg-blue-500/15 text-blue-600 border-blue-500/20",
-  "PayPal": "bg-cyan-500/15 text-cyan-600 border-cyan-500/20",
-  "Invoices": "bg-indigo-500/15 text-indigo-600 border-indigo-500/20",
-  "API": "bg-cyan-500/15 text-cyan-600 border-cyan-500/20",
-  "Tokens": "bg-purple-500/15 text-purple-600 border-purple-500/20",
-  "REST": "bg-teal-500/15 text-teal-600 border-teal-500/20",
-  "SDK": "bg-blue-500/15 text-blue-600 border-blue-500/20",
-  "Webhooks": "bg-pink-500/15 text-pink-600 border-pink-500/20",
-  "Events": "bg-amber-500/15 text-amber-600 border-amber-500/20",
-  "Payloads": "bg-indigo-500/15 text-indigo-600 border-indigo-500/20",
-  "Theme": "bg-purple-500/15 text-purple-600 border-purple-500/20",
-  "Customizer": "bg-sky-500/15 text-sky-600 border-sky-500/20",
+  Payments: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
+  Visa: "bg-blue-500/15 text-blue-600 border-blue-500/20",
+  PayPal: "bg-cyan-500/15 text-cyan-600 border-cyan-500/20",
+  Invoices: "bg-indigo-500/15 text-indigo-600 border-indigo-500/20",
+  API: "bg-cyan-500/15 text-cyan-600 border-cyan-500/20",
+  Tokens: "bg-purple-500/15 text-purple-600 border-purple-500/20",
+  REST: "bg-teal-500/15 text-teal-600 border-teal-500/20",
+  SDK: "bg-blue-500/15 text-blue-600 border-blue-500/20",
+  Webhooks: "bg-pink-500/15 text-pink-600 border-pink-500/20",
+  Events: "bg-amber-500/15 text-amber-600 border-amber-500/20",
+  Payloads: "bg-indigo-500/15 text-indigo-600 border-indigo-500/20",
+  Theme: "bg-purple-500/15 text-purple-600 border-purple-500/20",
+  Customizer: "bg-sky-500/15 text-sky-600 border-sky-500/20",
   "Dark Mode": "bg-slate-500/15 text-slate-600 border-slate-500/20",
-  "Team": "bg-blue-500/15 text-blue-600 border-blue-500/20",
-  "Roles": "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
-  "Permissions": "bg-amber-500/15 text-amber-600 border-amber-500/20",
-  "RBAC": "bg-red-500/15 text-red-600 border-red-500/20",
+  Team: "bg-blue-500/15 text-blue-600 border-blue-500/20",
+  Roles: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20",
+  Permissions: "bg-amber-500/15 text-amber-600 border-amber-500/20",
+  RBAC: "bg-red-500/15 text-red-600 border-red-500/20",
 };
 
 const matchTypeColors: Record<string, string> = {
@@ -137,7 +137,10 @@ export const getColumns = ({
     accessorKey: "category",
     header: "Category",
     cell: ({ row }) => (
-      <Badge color="secondary" className="rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 border border-default-200">
+      <Badge
+        color="secondary"
+        className="rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 border border-default-200"
+      >
         {row.getValue("category")}
       </Badge>
     ),
@@ -155,7 +158,8 @@ export const getColumns = ({
               key={idx}
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-xs font-medium border whitespace-nowrap shrink-0",
-                keywordColors[kw] || "bg-default-200 text-default-700 border-default-300"
+                keywordColors[kw] ||
+                  "bg-default-200 text-default-700 border-default-300",
               )}
             >
               #{kw}
@@ -185,11 +189,18 @@ export const getColumns = ({
     header: "Attachment",
     cell: ({ row }) => {
       const att = row.getValue<string | null>("attachment");
-      if (!att) return <span className="text-sm text-default-400 whitespace-nowrap shrink-0">—</span>;
+      if (!att)
+        return (
+          <span className="text-sm text-default-400 whitespace-nowrap shrink-0">
+            —
+          </span>
+        );
       return (
         <div className="flex items-center gap-1.5 text-sm text-primary font-medium whitespace-nowrap shrink-0">
           <Paperclip className="w-4 h-4 shrink-0" />
-          <span className="truncate max-w-[130px]">{att}</span>
+          <a href={att} target="_blank">
+            <span className="truncate max-w-[120px] lowercase">{att}</span>
+          </a>
         </div>
       );
     },
@@ -200,7 +211,12 @@ export const getColumns = ({
     header: "URL",
     cell: ({ row }) => {
       const url = row.getValue<string>("url");
-      if (!url) return <span className="text-sm text-default-400 whitespace-nowrap shrink-0">—</span>;
+      if (!url)
+        return (
+          <span className="text-sm text-default-400 whitespace-nowrap shrink-0">
+            —
+          </span>
+        );
       return (
         <a
           href={url}
@@ -224,7 +240,7 @@ export const getColumns = ({
         <Badge
           className={cn(
             "rounded-full px-3 py-1 text-xs font-medium border whitespace-nowrap shrink-0",
-            matchTypeColors[val] || "bg-default-200 text-default-700"
+            matchTypeColors[val] || "bg-default-200 text-default-700",
           )}
         >
           {val}
@@ -242,7 +258,7 @@ export const getColumns = ({
         <Badge
           className={cn(
             "rounded-full px-3 py-1 text-xs font-medium border whitespace-nowrap shrink-0",
-            priorityColors[prio] || "bg-default-200 text-default-700"
+            priorityColors[prio] || "bg-default-200 text-default-700",
           )}
         >
           {prio}
@@ -263,7 +279,7 @@ export const getColumns = ({
             "rounded-full px-3 py-1 text-xs font-medium border whitespace-nowrap shrink-0",
             isActive
               ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/20"
-              : "bg-default-300/40 text-default-700 border-default-300"
+              : "bg-default-300/40 text-default-700 border-default-300",
           )}
         >
           {isActive ? "Active" : "Inactive"}
@@ -277,7 +293,12 @@ export const getColumns = ({
     header: "Created By",
     cell: ({ row }) => {
       const author = row.original.createdBy;
-      const initials = author.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+      const initials = author.name
+        ?.split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
       return (
         <div className="font-medium text-card-foreground/80 shrink-0">
           <div className="flex gap-3 items-center whitespace-nowrap">
@@ -301,7 +322,9 @@ export const getColumns = ({
     accessorKey: "createdAt",
     header: "Created At",
     cell: ({ row }) => (
-      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("createdAt")}</span>
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">
+        {row.getValue("createdAt")}
+      </span>
     ),
     size: 140,
   },
@@ -309,7 +332,9 @@ export const getColumns = ({
     accessorKey: "updatedAt",
     header: "Updated At",
     cell: ({ row }) => (
-      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">{row.getValue("updatedAt")}</span>
+      <span className="text-sm text-default-600 whitespace-nowrap shrink-0">
+        {row.getValue("updatedAt")}
+      </span>
     ),
     size: 140,
   },
@@ -355,17 +380,30 @@ export const getColumns = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="text-xs text-default-500">Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onEdit(faq)} className="gap-2 cursor-pointer text-xs">
+              <DropdownMenuLabel className="text-xs text-default-500">
+                Actions
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => onEdit(faq)}
+                className="gap-2 cursor-pointer text-xs"
+              >
                 <SquarePen className="w-3.5 h-3.5 text-amber-500" />
                 <span>Edit FAQ</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleStatus(faq)} className="gap-2 cursor-pointer text-xs">
+              <DropdownMenuItem
+                onClick={() => onToggleStatus(faq)}
+                className="gap-2 cursor-pointer text-xs"
+              >
                 <Power className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{faq.status === "Active" ? "Deactivate" : "Activate"}</span>
+                <span>
+                  {faq.status === "Active" ? "Deactivate" : "Activate"}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onDelete(faq)} className="gap-2 cursor-pointer text-xs text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                onClick={() => onDelete(faq)}
+                className="gap-2 cursor-pointer text-xs text-destructive focus:text-destructive"
+              >
                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                 <span>Delete</span>
               </DropdownMenuItem>

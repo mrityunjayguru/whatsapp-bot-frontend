@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/navigation";
 import { FAQDataProps, getFaqById } from "../faqs-table/data";
+import { listFaqSources, mapSourceToFaqRow, FAQSource } from "../faq-api-service";
 import { ArrowLeft, HelpCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Section1FAQInfo } from "./__components/section-1-faq-info";
@@ -38,31 +39,63 @@ export function FAQDetailClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to find in localStorage
-    const saved = localStorage.getItem("faqs_data");
-    let foundFaq: FAQDataProps | undefined;
-    if (saved) {
-      try {
-        const list = JSON.parse(saved);
-        if (Array.isArray(list)) {
-          foundFaq = list.find(
-            (item) => item.id === id || item.faqId.toLowerCase() === id.toLowerCase() || item.faqId === `FAQ-${id}`
-          );
+    async function loadFaqDetail() {
+      setLoading(true);
+      const decodedId = decodeURIComponent(id);
+      let foundFaq: FAQDataProps | undefined;
+
+      // 1. Try to find in localStorage (saved faqs)
+      const saved = typeof window !== "undefined" ? localStorage.getItem("faqs_data") : null;
+      if (saved) {
+        try {
+          const list = JSON.parse(saved);
+          if (Array.isArray(list)) {
+            foundFaq = list.find(
+              (item) =>
+                item.id === decodedId ||
+                item.id === id ||
+                item.faqId.toLowerCase() === decodedId.toLowerCase() ||
+                item.faqId === `FAQ-${decodedId}`
+            );
+          }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error(e);
       }
+
+      // 2. Try fetching from live FAQ sources API
+      if (!foundFaq) {
+        try {
+          const sources = await listFaqSources();
+          if (Array.isArray(sources)) {
+            const match = sources.find(
+              (s: FAQSource) =>
+                s.id === decodedId ||
+                s.id === id ||
+                s.id?.toLowerCase() === decodedId.toLowerCase() ||
+                `FAQ-${s.id}`.toLowerCase() === decodedId.toLowerCase()
+            );
+            if (match) {
+              foundFaq = mapSourceToFaqRow(match);
+            }
+          }
+        } catch (err) {
+          console.error("Error loading FAQ source detail from API:", err);
+        }
+      }
+
+      // 3. Fallback to static initialFaqData
+      if (!foundFaq) {
+        foundFaq = getFaqById(decodedId) || getFaqById(id);
+      }
+
+      if (foundFaq) {
+        setFaq(foundFaq);
+      }
+      setLoading(false);
     }
 
-    // Fallback to static data
-    if (!foundFaq) {
-      foundFaq = getFaqById(id);
-    }
-
-    if (foundFaq) {
-      setFaq(foundFaq);
-    }
-    setLoading(false);
+    loadFaqDetail();
   }, [id]);
 
   if (loading) {

@@ -1,6 +1,39 @@
+import { FAQDataProps } from "./faqs-table/data";
+
 const FAQ_API_BASE = "https://whatsapi.trpgps.com/faq";
 
-export async function listFaqSources() {
+export interface FAQSource {
+  id: string;
+  name: string;
+  type: string;
+  source_url?: string | null;
+  added_at?: string | null;
+}
+
+export function mapSourceToFaqRow(s: FAQSource): FAQDataProps {
+  return {
+    id: s.id,
+    faqId: s.id,
+    question: s.name,
+    category: "General",
+    keywords: [],
+    answerPreview: s.name || "",
+    fullAnswer: s.name || "",
+    attachment: s.type === "document" ? s.source_url ?? null : null,
+    url: s.type === "url" || s.type === "video" ? s.source_url ?? "" : "",
+    matchType: "AI Semantic",
+    priority: "Medium",
+    status: "Active",
+    createdBy: {
+      name: "—",
+      avatar: "",
+    },
+    createdAt: s.added_at ? s.added_at.split("T")[0] : "",
+    updatedAt: s.added_at ? s.added_at.split("T")[0] : "",
+  };
+}
+
+export async function listFaqSources(): Promise<FAQSource[]> {
   const res = await fetch(`${FAQ_API_BASE}/sources`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch FAQ sources: ${res.status}`);
   return res.json();
