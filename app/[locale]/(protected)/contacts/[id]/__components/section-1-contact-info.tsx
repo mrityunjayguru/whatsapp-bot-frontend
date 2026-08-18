@@ -13,6 +13,15 @@ export const Section1ContactInfo = ({
   openEditContact,
   openAddTag,
 }: any) => {
+
+console.log("contact");
+console.log(contact);
+console.log("contact");
+
+
+
+
+
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
@@ -21,6 +30,8 @@ export const Section1ContactInfo = ({
             Section 1: Contact Information
           </div>
         </div>
+
+       
 
         <div className="flex items-center gap-3 pb-2 border-b border-default-200">
           <Avatar className="h-10 w-10 shrink-0 bg-default-100 border border-default-200">
@@ -34,7 +45,7 @@ export const Section1ContactInfo = ({
           </Avatar>
           <div className="min-w-0">
             <div className="text-sm font-semibold text-default-800 truncate">
-              {contact.customerName}
+              {contact.customname || "Unknown Customer"}
             </div>
             <div className="text-[11px] text-default-500 truncate">
               Since {contact.createdAt}
@@ -45,10 +56,10 @@ export const Section1ContactInfo = ({
         <div className="grid grid-cols-2 gap-x-4 gap-y-6">
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32">
-              Customer Name
+              Custom Name
             </span>
             <span className="text-sm font-medium text-default-800 truncate">
-              {contact.customerName}
+              {contact.customname || "Unknown nn Customer"}
             </span>
           </div>
           <div className="flex items-baseline gap-2 min-w-0">
@@ -59,6 +70,7 @@ export const Section1ContactInfo = ({
               {" "}{contact.whatsappName}
             </span>
           </div>
+          
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32">
               Phone Number
@@ -116,7 +128,7 @@ export const Section1ContactInfo = ({
               className="h-8 text-xs !border !border-default-200 bg-background hover:bg-transparent hover:text-inherit hover:ring-0 hover:border-default-200"
             >
               <User className="w-3.5 h-3.5 me-1.5" />
-              Edit Contact
+              Edit Contact  
             </Button>
             <Button
               variant="outline"

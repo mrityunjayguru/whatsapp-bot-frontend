@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Search, Plus, RefreshCw, PlusCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "@/components/navigation";
-import { listFaqSources, deleteFaqSource, FAQSource } from "../faq-api-service";
+import { listFaqSources, deleteFaqSource, FAQSource, mapSourceToFaqRow } from "../faq-api-service";
 
 const categoryOptions = [
   { value: "all", label: "All Categories" },
@@ -83,32 +83,6 @@ const matchTypeOptions = [
   { value: "AI Semantic", label: "AI Semantic" },
   { value: "Keyword Match", label: "Keyword Match" },
 ];
-
-// Maps a live backend FAQ source into the shape the existing table UI expects.
-// category / keywords / matchType / priority / status / createdBy aren't
-// stored by the backend yet, so they're filled with sensible placeholders.
-function mapSourceToFaqRow(s: FAQSource): FAQDataProps {
-  return {
-    id: s.id,
-    faqId: s.id,
-    question: s.name,
-    category: "General",
-    keywords: [],
-    answerPreview: "",
-    fullAnswer: "",
-    attachment: s.type === "document" ? s.source_url : null,
-    url: s.type === "url" || s.type === "video" ? s.source_url ?? "" : "",
-    matchType: "AI Semantic",
-    priority: "Medium",
-    status: "Active",
-    createdBy: {
-      name: "—",
-      avatar: "",
-    },
-    createdAt: s.added_at ? s.added_at.split("T")[0] : "",
-    updatedAt: s.added_at ? s.added_at.split("T")[0] : "",
-  };
-}
 
 export default function FAQTable() {
   const router = useRouter();
@@ -493,7 +467,7 @@ export default function FAQTable() {
       </div>
 
       {/* Table Section */}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto">
         <Table>
           <TableHeader className="bg-default-200">
             {table.getHeaderGroups().map((headerGroup) => (

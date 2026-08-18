@@ -92,8 +92,9 @@ export const Section1FAQInfo = ({ initialFaq }: Section1FAQInfoProps) => {
     toast.success("FAQ deleted successfully");
   };
 
-  const initials = faq.createdBy.name
-    ?.split(" ")
+  const initials = (faq.createdBy?.name || "")
+    .split(" ")
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
@@ -147,7 +148,7 @@ export const Section1FAQInfo = ({ initialFaq }: Section1FAQInfoProps) => {
               Keywords
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {faq.keywords.map((kw, idx) => (
+              {(faq.keywords || []).map((kw, idx) => (
                 <Badge
                   key={idx}
                   className={cn(
