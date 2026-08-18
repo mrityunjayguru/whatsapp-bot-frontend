@@ -2900,9 +2900,52 @@ export function ConversationDetailClient({
 
 
   const removeTag =
-    (
-      tag: string
+    async (
+      tag: string | string[]
     ) => {
+
+      alert(tag);
+      try{
+            const response = await fetch(API_BASE_URL+"/api/tags/deletemultiple", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        "tagIds":tag,
+      }),
+    });
+
+    
+
+
+    if (response.status==200) {
+      alert("Tag deleted successfully");
+      
+        setAddTagOpen(
+          false
+        );
+      
+    }
+
+  } catch (error) {
+    console.error("Error deleting tags:", error);
+    
+        setAddTagOpen(
+          false
+        );
+  }
+
+
+
+
+
+
+
+      const tagsToRemove =
+        Array.isArray(tag)
+          ? tag
+          : [tag];
 
       setSelectedTags(
         (prev) =>
@@ -2910,8 +2953,9 @@ export function ConversationDetailClient({
             (
               currentTag
             ) =>
-              currentTag !==
-              tag
+              !tagsToRemove.includes(
+                currentTag
+              )
           )
       );
     };
@@ -4101,6 +4145,21 @@ export function ConversationDetailClient({
             >
               Save Tags
             </Button>
+
+
+            <Button
+              color="primary"
+              size="sm"
+
+              onClick={() =>
+                removeTag(
+                  selectedTags
+                )
+              }
+            >
+              Remove Tags
+            </Button>
+
 
           </DialogFooter>
 
