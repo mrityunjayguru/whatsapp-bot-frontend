@@ -11,6 +11,12 @@ export interface FAQSource {
 }
 
 export function mapSourceToFaqRow(s: FAQSource): FAQDataProps {
+  const sourceUrl = s.source_url ?? "";
+  const isDoc =
+    s.type === "document" ||
+    /\.(pdf|doc|docx|xls|xlsx|csv|txt|png|jpg|jpeg|json)$/i.test(sourceUrl) ||
+    sourceUrl.includes("/files/");
+
   return {
     id: s.id,
     faqId: s.id,
@@ -19,8 +25,8 @@ export function mapSourceToFaqRow(s: FAQSource): FAQDataProps {
     keywords: [],
     answerPreview: s.name || "",
     fullAnswer: s.name || "",
-    attachment: s.type === "document" ? s.source_url ?? null : null,
-    url: s.type === "url" || s.type === "video" ? s.source_url ?? "" : "",
+    attachment: isDoc && sourceUrl ? sourceUrl : null,
+    url: !isDoc && sourceUrl ? sourceUrl : "",
     matchType: "AI Semantic",
     priority: "Medium",
     status: "Active",

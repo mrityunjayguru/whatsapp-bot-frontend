@@ -195,11 +195,12 @@ export const getColumns = ({
             —
           </span>
         );
+      const displayName = att.includes("/") ? att.split("/").pop() || att : att;
       return (
         <div className="flex items-center gap-1.5 text-sm text-primary font-medium whitespace-nowrap shrink-0">
           <Paperclip className="w-4 h-4 shrink-0" />
-          <a href={att} target="_blank">
-            <span className="truncate max-w-[120px] lowercase">{att}</span>
+          <a href={att} target="_blank" rel="noreferrer">
+            <span className="truncate max-w-[120px] lowercase">{displayName}</span>
           </a>
         </div>
       );
