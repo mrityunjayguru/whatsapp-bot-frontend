@@ -13,41 +13,62 @@ interface Section4AttachmentProps {
   faq: FAQDataProps;
 }
 
+const getFileDisplayName = (urlOrName: string) => {
+  if (!urlOrName) return "";
+  try {
+    if (urlOrName.startsWith("http://") || urlOrName.startsWith("https://")) {
+      const url = new URL(urlOrName);
+      const pathname = url.pathname;
+      const basename = pathname.split("/").pop();
+      if (basename) return decodeURIComponent(basename);
+    }
+  } catch (e) {
+    // fallback
+  }
+  return urlOrName;
+};
+
+const getFileTypeLabel = (fileNameOrUrl: string) => {
+  const cleanName = getFileDisplayName(fileNameOrUrl).toLowerCase();
+  if (cleanName.endsWith(".pdf")) return "PDF Document";
+  if (cleanName.endsWith(".docx") || cleanName.endsWith(".doc")) return "Word Document";
+  if (cleanName.endsWith(".xlsx") || cleanName.endsWith(".xls") || cleanName.endsWith(".csv")) return "Spreadsheet";
+  if (cleanName.endsWith(".png") || cleanName.endsWith(".jpg") || cleanName.endsWith(".jpeg") || cleanName.endsWith(".webp") || cleanName.endsWith(".svg")) return "Image File";
+  return "Document";
+};
+
 export const Section4Attachment = ({ faq }: Section4AttachmentProps) => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  const fileName = faq.attachment || "quickstart_guide.pdf";
-  const fileType = fileName.endsWith(".pdf")
-    ? "PDF Document"
-    : fileName.endsWith(".png") || fileName.endsWith(".jpg")
-    ? "Image File"
-    : "Document";
+  const rawFileName = faq.attachment || "quickstart_guide.pdf";
+  const displayName = getFileDisplayName(rawFileName);
+  const fileType = getFileTypeLabel(rawFileName);
   const fileSize = "2.4 MB";
   const uploadedAt = faq.createdAt || "2024-01-10";
 
   // Real browser download function
   const handleDownload = () => {
     try {
-      const sampleContent = `Document: ${fileName}\nFAQ ID: ${faq.faqId}\nQuestion: ${faq.question}\nAnswer: ${faq.fullAnswer || faq.answerPreview}\nDownloaded At: ${new Date().toLocaleString()}`;
+      const sampleContent = `Document: ${displayName}\nURL: ${rawFileName}\nFAQ ID: ${faq.faqId}\nQuestion: ${faq.question}\nAnswer: ${faq.fullAnswer || faq.answerPreview}\nDownloaded At: ${new Date().toLocaleString()}`;
       const blob = new Blob([sampleContent], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = fileName;
+      link.download = displayName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success(`Downloaded ${fileName} successfully!`);
+      toast.success(`Downloaded ${displayName} successfully!`);
     } catch (err) {
-      toast.error(`Failed to download ${fileName}`);
+      toast.error(`Failed to download ${displayName}`);
     }
   };
 
   // View preview function
   const handleView = () => {
     setViewDialogOpen(true);
-    toast.success(`Opening preview for ${fileName}`);
+    toast.success(`Opening preview for ${displayName}`);
   };
 
   return (
@@ -67,8 +88,8 @@ export const Section4Attachment = ({ faq }: Section4AttachmentProps) => {
               <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32 font-medium">
                 File Name
               </span>
-              <span className="text-sm font-semibold text-default-900 truncate">
-                {fileName}
+              <span className="text-sm font-semibold text-default-900 truncate" title={rawFileName}>
+                {displayName}
               </span>
             </div>
 
@@ -133,7 +154,7 @@ export const Section4Attachment = ({ faq }: Section4AttachmentProps) => {
       <ViewAttachmentDialog
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
-        fileName={fileName}
+        fileName={rawFileName}
         fileType={fileType}
         fileSize={fileSize}
         onDownload={handleDownload}
