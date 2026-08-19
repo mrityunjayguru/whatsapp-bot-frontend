@@ -34,6 +34,20 @@ import { Section5Tags } from "./__components/section-5-tags";
 import { FilePreviewDialog } from "./__components/file-preview-dialog";
 import { sharedFiles, SharedFile } from "./__components/files-shared-data";
 
+
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+const TEXT_API_ENDPOINT =
+  "/api/whatsapp/send1";
+
+const MULTIPART_API_ENDPOINT =
+  "/api/whatsapp/sendmultipart";
+
+const WS_API_BASE_URL =
+  process.env.NEXT_PUBLIC_WS_API_BASE_URL ?? "";
+
 const tagColors: Record<string, string> = {
   VIP: "bg-amber-500/15 text-amber-600",
   Priority: "bg-red-500/15 text-red-600",
@@ -207,10 +221,111 @@ console.log(" con=-----------------");
     setSelectedTags((prev) => prev.filter((t) => t !== tag));
   };
 
-  const saveTags = () => {
-    setCustomerInfo((prev) => ({ ...prev, tags: [...selectedTags] }));
-    setAddTagOpen(false);
-  };
+
+  // Save Contact begin
+  
+  const saveTags =
+    async () => {
+
+
+
+      try {
+
+        await Promise.all(
+          selectedTags.map(
+            async (
+              tagName
+            ) => {
+
+              alert(tagName);
+
+              const url =
+                API_BASE_URL +
+                "/api/tags?name=" +
+                encodeURIComponent(
+                  tagName
+                );
+
+
+              const response =
+                await fetch(
+                  url,
+                  {
+                    method:
+                      "POST",
+
+                    headers: {
+                      Accept:
+                        "application/json",
+
+                      "Content-Type":
+                        "application/json",
+                    },
+
+                    body:
+                      JSON.stringify(
+                        {
+                          name:
+                            tagName,
+                        }
+                      ),
+                  }
+                );
+                
+                if (response.status === 201) {
+                        alert("Created successfully");
+                }
+
+                if(response.status==200)
+                {
+                  alert(" Tag saved successfully");
+                }
+
+              if (
+                !response.ok
+              ) {
+
+                throw new Error(
+                  `Failed to save tag: ${tagName}`
+                );
+              }
+
+
+              return response.text();
+            }
+          )
+        );
+
+
+        setCustomerInfo(
+          (prev) => ({
+            ...prev,
+
+            tags: [
+              ...selectedTags,
+            ],
+          })
+        );
+
+
+        setAddTagOpen(
+          false
+        );
+
+      } catch (
+        error
+      ) {
+
+        alert("Error in saving tag.")
+
+        console.error(
+          "Error saving tags:",
+          error
+        );
+      }
+    };
+
+  // Save Contact end
 
   const removeTagFromContact = (tag: string) => {
     setCustomerInfo((prev) => ({

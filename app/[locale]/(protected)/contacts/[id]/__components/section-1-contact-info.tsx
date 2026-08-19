@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { User, Tag, TagIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ApiTag } from "../../../conversations/[id]/__components/section-2-customer-info";
+import { Item } from "@radix-ui/react-dropdown-menu";
 
 export const Section1ContactInfo = ({
   contact,
@@ -13,12 +15,100 @@ export const Section1ContactInfo = ({
   openEditContact,
   openAddTag,
 }: any) => {
+ 
 
-console.log("contact");
-console.log(contact);
-console.log("contact");
+  
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://whatsapi.trpgps.com";
+
+const WS_API_BASE_URL =
+  process.env.NEXT_PUBLIC_WS_API_BASE_URL ||
+  "wss://whatsapi.trpgps.com";
+
+const WS_ENDPOINT = "/ws";
+
+const TAG_WEBSOCKET_TOPIC = "/topic/tags";
 
 
+  const [allTags, setAllTags] = useState<ApiTag[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+
+
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchTags = async () => {
+      try {
+        setLoadingTags(true);
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/tags`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "ngrok-skip-browser-warning": "1",
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch tags: ${response.status} ${response.statusText}`
+          );
+        }
+
+        const data =
+          await response.json();
+
+        console.log(
+          "Initial Tags API response:",
+          data
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const tags =
+          (data);
+
+        console.log(
+          "Normalized initial tags:",
+          tags
+        );
+
+        setAllTags(tags);
+      } catch (error) {
+        if (!cancelled) {
+          console.error(
+            "Unable to load tags:",
+            error
+          );
+
+          setAllTags([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingTags(false);
+        }
+      }
+    };
+
+    fetchTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  
+    
+    console.log("contact");
+    console.log(contact);
+    console.log("contact");   
 
 
 
@@ -89,26 +179,14 @@ console.log("contact");
           </div>
           <div className="col-span-2 flex items-start gap-2 min-w-0">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32 pt-0.5">
-              Tags
+            Tags:
             </span>
-            <div className="flex flex-wrap gap-1.5 min-w-0">
-              {contact.tags && contact.tags.length > 0 ? (
-                contact.tags.map((tag: string, idx: number) => (
-                  <Badge
-                    key={idx}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
-                      tagColors?.[tag] || "bg-default-200 text-default-700"
-                    )}
-                  >
-                    {tag}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-xs text-default-400">No tags</span>
-              )}
-            </div>
-          </div>
+                <div className="flex flex-wrap gap-1.5 min-w-0">
+                    {allTags?.map((tag, index) => (
+                      <span key={index}>{tag.name}</span>
+                    ))}
+                  </div>
+                      </div>
           <div className="flex items-baseline gap-2 min-w-0 col-span-2">
             <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32">
               Customer Since
