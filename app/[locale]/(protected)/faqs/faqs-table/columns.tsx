@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "@/components/navigation";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 // Tag & Keyword styling per Conversations / Contacts page pattern
 const keywordColors: Record<string, string> = {
@@ -199,9 +200,17 @@ export const getColumns = ({
       return (
         <div className="flex items-center gap-1.5 text-sm text-primary font-medium whitespace-nowrap shrink-0">
           <Paperclip className="w-4 h-4 shrink-0" />
-          <a href={att} target="_blank" rel="noreferrer">
-            <span className="truncate max-w-[120px] lowercase">{displayName}</span>
-          </a>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openPdfInNewTab(att);
+            }}
+            className="truncate max-w-[120px] lowercase text-primary font-medium hover:underline text-left cursor-pointer"
+          >
+            {displayName}
+          </button>
         </div>
       );
     },

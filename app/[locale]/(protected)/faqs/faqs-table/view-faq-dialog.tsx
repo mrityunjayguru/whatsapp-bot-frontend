@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FAQDataProps } from "./data";
 import { ExternalLink, Paperclip } from "lucide-react";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 interface ViewFAQDialogProps {
   open: boolean;
@@ -87,7 +88,13 @@ export function ViewFAQDialog({
               {faq.attachment && (
                 <div className="flex items-center gap-1.5 text-primary font-medium">
                   <Paperclip className="w-4 h-4" />
-                  <span>{faq.attachment}</span>
+                  <button
+                    type="button"
+                    onClick={() => openPdfInNewTab(faq.attachment)}
+                    className="hover:underline text-primary text-xs font-medium cursor-pointer"
+                  >
+                    {faq.attachment}
+                  </button>
                 </div>
               )}
               {faq.url && (

@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Client, IMessage, IFrame, StompSubscription } from "@stomp/stompjs";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 /* ============================================================
    CONFIG
@@ -627,10 +628,14 @@ export const Section3ChatTimeline: React.FC<Section3ChatTimelineProps> = ({
                             <audio src={mediaUrl} controls className="max-w-[240px]" />
                           )}
                           {msg.type === "file" && (
-                            <a href={mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline font-medium text-xs">
+                            <button
+                              type="button"
+                              onClick={() => openPdfInNewTab(mediaUrl || msg.fileName)}
+                              className="flex items-center gap-1.5 underline font-medium text-xs text-left cursor-pointer hover:opacity-80"
+                            >
                               <Icon icon="heroicons:document-text" className="w-4 h-4 shrink-0" />
-                              <span className="truncate">{msg.fileName || "Download attachment"}</span>
-                            </a>
+                              <span className="truncate">{msg.fileName || "View attachment"}</span>
+                            </button>
                           )}
                         </div>
                       )}

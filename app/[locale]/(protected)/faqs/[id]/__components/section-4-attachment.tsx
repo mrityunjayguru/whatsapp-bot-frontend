@@ -8,6 +8,7 @@ import { FAQDataProps } from "../../faqs-table/data";
 import { Paperclip, Download, Eye, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { ViewAttachmentDialog } from "./view-attachment-dialog";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 interface Section4AttachmentProps {
   faq: FAQDataProps;
@@ -65,10 +66,10 @@ export const Section4Attachment = ({ faq }: Section4AttachmentProps) => {
     }
   };
 
-  // View preview function
+  // View preview / open in new tab function
   const handleView = () => {
-    setViewDialogOpen(true);
-    toast.success(`Opening preview for ${displayName}`);
+    openPdfInNewTab(rawFileName);
+    toast.success(`Opening ${displayName} in new tab`);
   };
 
   return (
@@ -88,7 +89,11 @@ export const Section4Attachment = ({ faq }: Section4AttachmentProps) => {
               <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32 font-medium">
                 File Name
               </span>
-              <span className="text-sm font-semibold text-default-900 truncate" title={rawFileName}>
+              <span
+                className="text-sm font-semibold text-primary hover:underline cursor-pointer truncate"
+                title={rawFileName}
+                onClick={() => openPdfInNewTab(rawFileName)}
+              >
                 {displayName}
               </span>
             </div>

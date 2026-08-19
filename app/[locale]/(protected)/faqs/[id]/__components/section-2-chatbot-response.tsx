@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 interface Section2ChatbotResponseProps {
   faq: FAQDataProps;
@@ -133,9 +134,17 @@ export const Section2ChatbotResponse = ({ faq }: Section2ChatbotResponseProps) =
               <span className="text-xs text-default-500 shrink-0 whitespace-nowrap w-32 font-medium">
                 Attachment Name
               </span>
-              <span className="text-sm font-medium text-default-800 truncate">
-                {faq.attachment || "N/A"}
-              </span>
+              {faq.attachment ? (
+                <button
+                  type="button"
+                  onClick={() => openPdfInNewTab(faq.attachment)}
+                  className="text-sm font-medium text-primary hover:underline truncate cursor-pointer text-left"
+                >
+                  {faq.attachment}
+                </button>
+              ) : (
+                <span className="text-sm font-medium text-default-400">N/A</span>
+              )}
             </div>
 
             {/* URL */}

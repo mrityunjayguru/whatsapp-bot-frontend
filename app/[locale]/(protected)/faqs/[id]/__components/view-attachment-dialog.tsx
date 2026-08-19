@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, X } from "lucide-react";
+import { Download, ExternalLink, FileText, X } from "lucide-react";
+import { openPdfInNewTab } from "@/lib/pdf-utils";
 
 interface ViewAttachmentDialogProps {
   open: boolean;
@@ -102,13 +103,25 @@ export function ViewAttachmentDialog({
           </div>
         </div>
 
-        <DialogFooter className=" sm:gap-2 flex justify-normal items-center gap-3">
+        <DialogFooter className="sm:gap-2 flex justify-end items-center gap-2">
           <Button
             variant="outline"
             size="md"
             onClick={() => onOpenChange(false)}
           >
             Close
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
+            className="gap-1.5"
+            onClick={() => {
+              openPdfInNewTab(fileName);
+              onOpenChange(false);
+            }}
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>Open in New Tab</span>
           </Button>
           <Button
             color="primary"
