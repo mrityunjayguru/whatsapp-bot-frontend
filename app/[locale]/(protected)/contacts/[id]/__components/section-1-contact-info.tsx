@@ -16,6 +16,7 @@ export const Section1ContactInfo = ({
   tagColors,
   openEditContact,
   openAddTag,
+  openDeleteTag,
 }: any) => {
  
 
@@ -499,7 +500,7 @@ const TAG_WEBSOCKET_TOPIC = "/topic/tags";
             <Button
               variant="outline"
               size="sm"
-              onClick={openAddTag}
+              onClick={openDeleteTag}
               className="h-8 text-xs !border !border-default-200 bg-background hover:bg-transparent hover:text-inherit hover:ring-0 hover:border-default-200 text-destructive border-destructive/30 hover:border-destructive hover:text-destructive"
             >
               <Tag className="w-3.5 h-3.5 me-1.5" />
