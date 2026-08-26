@@ -66,7 +66,7 @@ export function ContactDetailClient({
     whatsappName: contact.whatsappName,
     phone: contact.mobile,
     email: contact.email,
-    tags: [contact.tags],
+    tags: [contact.tags], // This creates a nested array
     customerSince: contact.createdAt,
     whatsappphonenumberid: contact.whatsappphonenumberid || "",
   });
@@ -77,8 +77,10 @@ export function ContactDetailClient({
   const [previewFile, setPreviewFile] = useState<SharedFile | null>(null);
   const [editForm, setEditForm] = useState({ ...customerInfo });
   const [newTagInput, setNewTagInput] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([...customerInfo.tags]);
-
+  // ✅ FIX: Flatten the tags array
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    customerInfo.tags.flat()
+  );
   const customerInitials = customerInfo.customname
     .split(" ")
     .map((n) => n[0])
