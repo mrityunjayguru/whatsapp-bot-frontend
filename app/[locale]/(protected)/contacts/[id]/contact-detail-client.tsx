@@ -56,18 +56,35 @@ const availableTags = [
   "Feedback",
 ];
 
+export interface CustomerInfoState {
+  customname: string;
+  whatsappName: string;
+  phone: string;
+  email: string;
+  tags: string[];
+  customerSince: string;
+  whatsappphonenumberid: string | number;
+}
+
 export function ContactDetailClient({
   contact,
 }: {
   contact: DataProps;
 }) {
-  const [customerInfo, setCustomerInfo] = useState({
+  // Normalize initial tags into a flat string[]
+  const initialTags: string[] = Array.isArray(contact.tags)
+    ? (contact.tags as any).flat().filter(Boolean)
+    : contact.tags
+    ? [String(contact.tags)]
+    : [];
+
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfoState>({
     customname: contact.customname || "Unknown Customer",
-    whatsappName: contact.whatsappName,
-    phone: contact.mobile,
-    email: contact.email,
-    tags: [contact.tags], // This creates a nested array
-    customerSince: contact.createdAt,
+    whatsappName: contact.whatsappName || "",
+    phone: contact.mobile || "",
+    email: contact.email || "",
+    tags: initialTags,
+    customerSince: contact.createdAt || "",
     whatsappphonenumberid: contact.whatsappphonenumberid || "",
   });
 
@@ -75,13 +92,11 @@ export function ContactDetailClient({
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<SharedFile | null>(null);
-  const [editForm, setEditForm] = useState({ ...customerInfo });
+  const [editForm, setEditForm] = useState<CustomerInfoState>({ ...customerInfo });
   const [newTagInput, setNewTagInput] = useState("");
-  // ✅ FIX: Flatten the tags array
-  const [selectedTags, setSelectedTags] = useState<string[]>(
-    customerInfo.tags.flat()
-  );
-  const customerInitials = customerInfo.customname
+  const [selectedTags, setSelectedTags] = useState<string[]>(customerInfo.tags);
+
+  const customerInitials = (customerInfo.customname || "U")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -98,63 +113,60 @@ export function ContactDetailClient({
     setEditContactOpen(true);
   };
 
-  const saveEditContact = () => {
-
-    
-    console.log("editForm");
-    console.log(editForm);
-    console.log("editForm");
-
-    
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/byphonenumber/${editForm.phone}`, {
-       method: "GET",
-        headers: {
-            "Accept": "application/json",
-            "ngrok-skip-browser-warning": "1"
+  const saveEditContact = async () => {
+    try {
+      const getRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/byphonenumber/${editForm.phone}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "1",
+          },
         }
-      })
+      );
 
-      .then((response) => response.json())
-      .then(async (data) => {
-        console.log("Fetched contact data:", data);
+      let payload = { ...editForm };
+      if (getRes.ok) {
+        const data = await getRes.json();
+        payload = {
+          ...data,
+          customname: editForm.customname,
+          email: editForm.email,
+          whatsappName: editForm.whatsappName,
+          whatsappphonenumberid: editForm.whatsappphonenumberid,
+          customerSince: editForm.customerSince,
+        };
+      }
 
+      const updateRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/update`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "1",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
+      if (!updateRes.ok) {
+        throw new Error(`Update failed: ${updateRes.status}`);
+      }
 
-        data.customname = editForm.customname;
-        data.email = editForm.email;
-
-const response = await fetch(
-  `${process.env.NEXT_PUBLIC_API_BASE_URL}/allcontactentity/update`,
-  {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
-    body: JSON.stringify(data),
-  }
-);
-
-if (!response.ok) {
-  throw new Error(`Update failed: ${response.status}`);
-}
-
-const result = await response.text();
-alert("Update successful: " +response.status);
-
-
-
-
-
-      });
-
-    setCustomerInfo({ ...editForm });
-    setEditContactOpen(false);
+      setCustomerInfo({ ...editForm });
+      setEditContactOpen(false);
+      alert("Update successful: " + updateRes.status);
+    } catch (error) {
+      console.error("Failed to update contact:", error);
+      alert("Error updating contact data.");
+    }
   };
 
   const openAddTag = () => {
-    setSelectedTags(customerInfo.tags.flat()); // Flatten the array
+    setSelectedTags([...customerInfo.tags]);
     setNewTagInput("");
     setAddTagOpen(true);
   };
@@ -195,7 +207,7 @@ alert("Update successful: " +response.status);
     whatsappName: customerInfo.whatsappName,
     mobile: customerInfo.phone,
     email: customerInfo.email,
-    tags: customerInfo.tags,
+    tags: customerInfo.tags as any,
     createdAt: customerInfo.customerSince,
   };
 
@@ -332,11 +344,11 @@ alert("Update successful: " +response.status);
               />
             </div>
 
-                <div className="space-y-2">
-              <Label htmlFor="whatsappphonenumberid">WhatsApp phonenummberid</Label>
+            <div className="space-y-2">
+              <Label htmlFor="whatsappphonenumberid">WhatsApp phone number id</Label>
               <Input
                 id="whatsappphonenumberid"
-                type="whatsappphonenumberid"
+                type="text"
                 value={editForm.whatsappphonenumberid}
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, whatsappphonenumberid: e.target.value }))
@@ -369,7 +381,7 @@ alert("Update successful: " +response.status);
               </Button>
             </DialogClose>
             <Button color="primary" size="sm" className="h-9" onClick={saveEditContact}>
-              Save Changes 
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
