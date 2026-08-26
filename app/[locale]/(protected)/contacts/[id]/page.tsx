@@ -28,11 +28,14 @@ function ContactDetailNotFound() {
 }
 
 const ContactDetailPage = async ({
-  params: { id },
+  params,
 }: {
   params: { id: string };
 }) => {
-  const contact = getContactById(id);
+  const { id } = params;
+
+  // ✅ FIX: Added 'await' since getContactById returns a Promise
+  const contact = await getContactById(id);
 
   if (!contact) {
     return (
