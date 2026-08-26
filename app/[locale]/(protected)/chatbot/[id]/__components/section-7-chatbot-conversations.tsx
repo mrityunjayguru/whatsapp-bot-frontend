@@ -459,12 +459,10 @@ export const Section7ChatbotConversations = ({
                 size="icon"
                 className="w-8 h-8 text-xs font-medium"
                 variant={currentPage === page ? "default" : "outline"}
-                color={currentPage === page ? "default" : "outline" }
               >
                 {page}
               </Button>
             ))}
-
             <Button
               variant="outline"
               size="icon"
