@@ -154,7 +154,7 @@ alert("Update successful: " +response.status);
   };
 
   const openAddTag = () => {
-    setSelectedTags([...customerInfo.tags]);
+    setSelectedTags(customerInfo.tags.flat()); // Flatten the array
     setNewTagInput("");
     setAddTagOpen(true);
   };
